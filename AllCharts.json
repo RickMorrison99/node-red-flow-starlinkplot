@@ -1,0 +1,382 @@
+[
+  {
+    "id": "ac_tab",
+    "type": "tab",
+    "label": "AllCharts",
+    "disabled": false,
+    "info": "",
+    "env": []
+  },
+  {
+    "id": "ac_fetch_inj",
+    "type": "inject",
+    "z": "ac_tab",
+    "name": "Fetch TLE Data",
+    "props": [
+      {
+        "p": "payload"
+      }
+    ],
+    "repeat": "3600",
+    "crontab": "",
+    "once": true,
+    "onceDelay": 1,
+    "topic": "",
+    "payload": "",
+    "payloadType": "date",
+    "x": 130,
+    "y": 80,
+    "wires": [
+      [
+        "ac_fetch_http"
+      ]
+    ]
+  },
+  {
+    "id": "ac_fetch_http",
+    "type": "http request",
+    "z": "ac_tab",
+    "name": "Celestrak Starlink TLEs",
+    "method": "GET",
+    "ret": "txt",
+    "paytoqs": "ignore",
+    "url": "https://celestrak.org/NORAD/elements/gp.php?GROUP=starlink&FORMAT=csv",
+    "tls": "",
+    "persist": false,
+    "proxy": "",
+    "insecureHTTPParser": false,
+    "authType": "",
+    "senderr": false,
+    "headers": [],
+    "x": 340,
+    "y": 80,
+    "wires": [
+      [
+        "ac_store_fn"
+      ]
+    ]
+  },
+  {
+    "id": "ac_store_fn",
+    "type": "function",
+    "z": "ac_tab",
+    "name": "Store TLE to Global",
+    "func": "global.set(\"rawStarlinkData\", msg.payload);\nglobal.set(\"satHistory\", {});\nreturn null;",
+    "outputs": 1,
+    "timeout": 0,
+    "noerr": 0,
+    "initialize": "",
+    "finalize": "",
+    "libs": [],
+    "x": 560,
+    "y": 80,
+    "wires": [
+      []
+    ]
+  },
+  {
+    "id": "ac_anim_inj",
+    "type": "inject",
+    "z": "ac_tab",
+    "name": "Frame (2s)",
+    "props": [
+      {
+        "p": "payload"
+      }
+    ],
+    "repeat": "2",
+    "crontab": "",
+    "once": true,
+    "onceDelay": 3,
+    "topic": "",
+    "payload": "",
+    "payloadType": "date",
+    "x": 130,
+    "y": 200,
+    "wires": [
+      [
+        "ac_compute_fn"
+      ]
+    ]
+  },
+  {
+    "id": "ac_compute_fn",
+    "type": "function",
+    "z": "ac_tab",
+    "name": "Compute Satellite Positions",
+    "func": "// CONFIGURE YOUR LOCATION\nconst OBSERVER_LAT = 51.0447;   // Calgary, AB\nconst OBSERVER_LON = -114.0719;\nconst deg2rad = Math.PI / 180;\n\nconst rawData = global.get(\"rawStarlinkData\");\nif (!rawData || typeof rawData !== 'string' || rawData.trim() === \"\") return null;\n\nconst now   = Date.now();\nconst GAST  = (280.46061837 + 360.98564736629 * (now - 946728000000) / 86400000) % 360;\nconst Re = 6371, h = 550;\nconst obs_lat = OBSERVER_LAT * deg2rad;\nconst obs_lon = OBSERVER_LON * deg2rad;\n\nlet hist = global.get(\"satHistory\") || {};\nconst sats = [];\n\nfor (const line of rawData.split('\\n')) {\n    const r = line.split(',');\n    if (r.length < 9 || !r[0] || !r[0].startsWith(\"STARLINK\")) continue;\n    const n=+r[3], inc=+r[5], raan=+r[6], argp=+r[7], M0=+r[8];\n    if ([n,inc,raan,argp,M0].some(isNaN)) continue;\n    try {\n        const M    = (M0 + n*(now - new Date(r[2].trim()).getTime())/86400000*360) % 360;\n        const u    = (argp + M) * deg2rad;\n        const ir   = inc * deg2rad;\n        const slat = Math.asin(Math.max(-1, Math.min(1, Math.sin(ir)*Math.sin(u))));\n        let   slon = ((raan + Math.atan2(Math.cos(ir)*Math.sin(u), Math.cos(u))/deg2rad) - GAST) % 360;\n        if (slon > 180) slon -= 360;\n        const dlon  = slon*deg2rad - obs_lon;\n        const cos_c = Math.sin(obs_lat)*Math.sin(slat) + Math.cos(obs_lat)*Math.cos(slat)*Math.cos(dlon);\n        if (cos_c < Re/(Re+h)) continue;\n        const c  = Math.acos(Math.max(-1, Math.min(1, cos_c)));\n        const el = Math.atan((cos_c - Re/(Re+h)) / Math.sin(c)) / deg2rad;\n        if (el <= 0) continue;\n        const az = (Math.atan2(\n            Math.sin(dlon)*Math.cos(slat),\n            Math.cos(obs_lat)*Math.sin(slat) - Math.sin(obs_lat)*Math.cos(slat)*Math.cos(dlon)\n        )/deg2rad + 360) % 360;\n        const lat = +(slat/deg2rad).toFixed(3), lon = +slon.toFixed(3);\n        const nm  = r[0].trim();\n        if (!hist[nm]) hist[nm] = [];\n        hist[nm].push({t:now, el:+el.toFixed(2), az:+az.toFixed(2), lat, lon});\n        hist[nm] = hist[nm].filter(p=>(now-p.t)<60000).slice(-20);\n        sats.push({name:nm, inc:+inc.toFixed(1), el:+el.toFixed(2), az:+az.toFixed(2), lat, lon, trail:hist[nm]});\n    } catch(e) {}\n}\nglobal.set(\"satHistory\", hist);\nsats.sort((a,b) => b.el - a.el);\nconst payload = sats.slice(0, 300);\nreturn [{payload}, {payload}, {payload}];",
+    "outputs": 3,
+    "timeout": 0,
+    "noerr": 0,
+    "initialize": "",
+    "finalize": "",
+    "libs": [],
+    "x": 360,
+    "y": 200,
+    "wires": [
+      [
+        "ac_svg_tpl"
+      ],
+      [
+        "ac_canvas_tpl"
+      ],
+      [
+        "ac_map_tpl"
+      ]
+    ]
+  },
+  {
+    "id": "ac_svg_tpl",
+    "type": "ui-template",
+    "z": "ac_tab",
+    "group": "ac_grp_svg",
+    "name": "SVG Polar Radar",
+    "order": 1,
+    "width": "6",
+    "height": "9",
+    "format": "<template>\n  <div style=\"background:#0a0a1a;display:flex;flex-direction:column;align-items:center;padding:4px\">\n    <div style=\"color:#445566;font-size:10px;margin-bottom:2px;font-family:monospace\">\n      {{ sats.length }} visible &nbsp;\u00b7&nbsp; SVG &nbsp;\u00b7&nbsp; {{ ts }}\n    </div>\n    <svg viewBox=\"0 0 360 360\" style=\"width:100%;max-width:380px;height:auto\">\n      <rect width=\"360\" height=\"360\" fill=\"#0a0a1a\"/>\n      <!-- Elevation rings -->\n      <circle cx=\"180\" cy=\"180\" r=\"170\" fill=\"none\" stroke=\"#1e2e3e\" stroke-width=\"1\"/>\n      <circle cx=\"180\" cy=\"180\" r=\"113\" fill=\"none\" stroke=\"#1e2e3e\" stroke-width=\"1\" stroke-dasharray=\"4,5\"/>\n      <circle cx=\"180\" cy=\"180\" r=\"57\"  fill=\"none\" stroke=\"#1e2e3e\" stroke-width=\"1\" stroke-dasharray=\"4,5\"/>\n      <!-- Crosshairs -->\n      <line x1=\"180\" y1=\"10\"  x2=\"180\" y2=\"350\" stroke=\"#192838\" stroke-width=\"0.5\"/>\n      <line x1=\"10\"  y1=\"180\" x2=\"350\" y2=\"180\" stroke=\"#192838\" stroke-width=\"0.5\"/>\n      <!-- Cardinal labels -->\n      <text x=\"180\" y=\"9\"   fill=\"#3a5a7a\" font-size=\"11\" text-anchor=\"middle\" font-family=\"monospace\">N</text>\n      <text x=\"180\" y=\"358\" fill=\"#3a5a7a\" font-size=\"11\" text-anchor=\"middle\" font-family=\"monospace\">S</text>\n      <text x=\"356\" y=\"184\" fill=\"#3a5a7a\" font-size=\"11\" text-anchor=\"end\"    font-family=\"monospace\">E</text>\n      <text x=\"4\"   y=\"184\" fill=\"#3a5a7a\" font-size=\"11\"                      font-family=\"monospace\">W</text>\n      <!-- Elevation labels -->\n      <text x=\"184\" y=\"73\"  fill=\"#2a3a4a\" font-size=\"8\" font-family=\"monospace\">60\u00b0</text>\n      <text x=\"184\" y=\"129\" fill=\"#2a3a4a\" font-size=\"8\" font-family=\"monospace\">30\u00b0</text>\n      <!-- Trails -->\n      <g v-for=\"sat in sats\" :key=\"'t_'+sat.name\">\n        <polyline v-if=\"sat.trail && sat.trail.length > 1\"\n          :points=\"tp(sat.trail)\"\n          fill=\"none\" :stroke=\"col(sat.inc)\" stroke-width=\"0.7\" opacity=\"0.3\"/>\n      </g>\n      <!-- Satellite dots -->\n      <circle v-for=\"sat in sats\" :key=\"sat.name\"\n        :cx=\"px(sat.el,sat.az)\" :cy=\"py(sat.el,sat.az)\" r=\"2.2\"\n        :fill=\"col(sat.inc)\"/>\n    </svg>\n    <!-- Legend -->\n    <div style=\"display:flex;gap:10px;margin-top:4px;font-size:9px;font-family:monospace\">\n      <span style=\"color:#ff7700\">&#9679; 43\u00b0</span>\n      <span style=\"color:#00aaff\">&#9679; 53\u00b0</span>\n      <span style=\"color:#00ee88\">&#9679; 70\u00b0</span>\n      <span style=\"color:#cc44ff\">&#9679; 97\u00b0</span>\n    </div>\n  </div>\n</template>\n<script>\nexport default {\n  props: ['msg'],\n  data() { return { sats: [], ts: '' } },\n  watch: {\n    msg(v) {\n      if (v?.payload) { this.sats = v.payload; this.ts = new Date().toLocaleTimeString(); }\n    }\n  },\n  methods: {\n    px(el, az) { return (180 + 170*(90-el)/90 * Math.sin(az*Math.PI/180)).toFixed(1); },\n    py(el, az) { return (180 - 170*(90-el)/90 * Math.cos(az*Math.PI/180)).toFixed(1); },\n    tp(trail) {\n      return trail.map(p =>\n        `${(180+170*(90-p.el)/90*Math.sin(p.az*Math.PI/180)).toFixed(1)},` +\n        `${(180-170*(90-p.el)/90*Math.cos(p.az*Math.PI/180)).toFixed(1)}`\n      ).join(' ');\n    },\n    col(inc) { return inc<50?'#ff7700':inc<60?'#00aaff':inc<75?'#00ee88':'#cc44ff'; }\n  }\n}\n</script>",
+    "storeOutMessages": false,
+    "fwdInMessages": false,
+    "resendOnRefresh": true,
+    "templateScope": "local",
+    "className": "",
+    "x": 580,
+    "y": 160,
+    "wires": [
+      []
+    ]
+  },
+  {
+    "id": "ac_canvas_tpl",
+    "type": "ui-template",
+    "z": "ac_tab",
+    "group": "ac_grp_canvas",
+    "name": "Canvas Polar Radar",
+    "order": 1,
+    "width": "6",
+    "height": "9",
+    "format": "<template>\n  <div style=\"background:#0a0a1a;display:flex;flex-direction:column;align-items:center;padding:4px\">\n    <div style=\"color:#445566;font-size:10px;margin-bottom:2px;font-family:monospace\">\n      {{ count }} visible &nbsp;\u00b7&nbsp; Canvas\n    </div>\n    <canvas ref=\"cv\" width=\"360\" height=\"360\" style=\"max-width:100%\"/>\n    <!-- Legend -->\n    <div style=\"display:flex;gap:10px;margin-top:4px;font-size:9px;font-family:monospace\">\n      <span style=\"color:#ff7700\">&#9679; 43\u00b0</span>\n      <span style=\"color:#00aaff\">&#9679; 53\u00b0</span>\n      <span style=\"color:#00ee88\">&#9679; 70\u00b0</span>\n      <span style=\"color:#cc44ff\">&#9679; 97\u00b0</span>\n    </div>\n  </div>\n</template>\n<script>\nexport default {\n  props: ['msg'],\n  data() { return { count: 0 } },\n  watch: {\n    msg(v) {\n      if (v?.payload) { this.count = v.payload.length; this.$nextTick(() => this.draw(v.payload)); }\n    }\n  },\n  methods: {\n    col(inc) { return inc<50?'#ff7700':inc<60?'#00aaff':inc<75?'#00ee88':'#cc44ff'; },\n    hex2rgba(hex, a) {\n      const n = parseInt(hex.slice(1), 16);\n      return `rgba(${n>>16},${(n>>8)&255},${n&255},${a})`;\n    },\n    draw(sats) {\n      const cv = this.$refs.cv; if (!cv) return;\n      const ctx = cv.getContext('2d');\n      const cx=180, cy=180, R=170;\n      ctx.fillStyle='#0a0a1a'; ctx.fillRect(0,0,360,360);\n      // Elevation rings\n      [[R,[]],[R*2/3,[4,5]],[R/3,[4,5]]].forEach(([r,dash]) => {\n        ctx.beginPath(); ctx.arc(cx,cy,r,0,Math.PI*2);\n        ctx.setLineDash(dash); ctx.strokeStyle='#1e2e3e'; ctx.lineWidth=1; ctx.stroke();\n      });\n      ctx.setLineDash([]);\n      // Crosshairs\n      ctx.strokeStyle='#192838'; ctx.lineWidth=0.5;\n      [[cx,10,cx,350],[10,cy,350,cy]].forEach(([x1,y1,x2,y2]) => {\n        ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2); ctx.stroke();\n      });\n      // Cardinal labels\n      ctx.font='11px monospace'; ctx.fillStyle='#3a5a7a';\n      ctx.textAlign='center'; ctx.fillText('N',cx,9);  ctx.fillText('S',cx,358);\n      ctx.textAlign='right';  ctx.fillText('E',356,184);\n      ctx.textAlign='left';   ctx.fillText('W',4,184);\n      ctx.font='8px monospace'; ctx.fillStyle='#2a3a4a';\n      ctx.fillText('60\u00b0',184,73); ctx.fillText('30\u00b0',184,129);\n      // Trails\n      sats.forEach(s => {\n        if (!s.trail || s.trail.length < 2) return;\n        ctx.beginPath();\n        s.trail.forEach((p,i) => {\n          const r=R*(90-p.el)/90;\n          const x=cx+r*Math.sin(p.az*Math.PI/180), y=cy-r*Math.cos(p.az*Math.PI/180);\n          i===0 ? ctx.moveTo(x,y) : ctx.lineTo(x,y);\n        });\n        ctx.strokeStyle = this.hex2rgba(this.col(s.inc), 0.3);\n        ctx.lineWidth=0.7; ctx.stroke();\n      });\n      // Dots\n      sats.forEach(s => {\n        const r=R*(90-s.el)/90;\n        ctx.beginPath();\n        ctx.arc(cx+r*Math.sin(s.az*Math.PI/180), cy-r*Math.cos(s.az*Math.PI/180), 2.2, 0, Math.PI*2);\n        ctx.fillStyle=this.col(s.inc); ctx.fill();\n      });\n    }\n  }\n}\n</script>",
+    "storeOutMessages": false,
+    "fwdInMessages": false,
+    "resendOnRefresh": true,
+    "templateScope": "local",
+    "className": "",
+    "x": 580,
+    "y": 200,
+    "wires": [
+      []
+    ]
+  },
+  {
+    "id": "ac_map_tpl",
+    "type": "ui-template",
+    "z": "ac_tab",
+    "group": "ac_grp_map",
+    "name": "Leaflet Ground Track",
+    "order": 1,
+    "width": "12",
+    "height": "12",
+    "format": "<template>\n  <div style=\"width:100%;height:500px;background:#111\">\n    <div ref=\"mapEl\" style=\"width:100%;height:100%\"/>\n  </div>\n</template>\n<script>\nexport default {\n  props: ['msg'],\n  data() { return { ready:false, markers:{}, trails:{} } },\n  mounted() { this.$nextTick(() => this.init()); },\n  beforeUnmount() { if (this._map) { this._map.remove(); this._map = null; } },\n  watch: {\n    msg(v) { if (v?.payload) this.update(v.payload); }\n  },\n  methods: {\n    col(inc) { return inc<50?'#ff7700':inc<60?'#00aaff':inc<75?'#00ee88':'#cc44ff'; },\n    init() {\n      const loadCSS = href => {\n        if (!document.querySelector(`link[href=\"${href}\"]`)) {\n          const l=document.createElement('link'); l.rel='stylesheet'; l.href=href;\n          document.head.appendChild(l);\n        }\n      };\n      const loadJS = src => new Promise(res => {\n        if (document.querySelector(`script[src=\"${src}\"]`)) { res(); return; }\n        const s=document.createElement('script'); s.src=src; s.onload=res;\n        document.head.appendChild(s);\n      });\n      loadCSS('https://unpkg.com/leaflet@1.9.4/dist/leaflet.css');\n      loadJS('https://unpkg.com/leaflet@1.9.4/dist/leaflet.js').then(() => {\n        const L = window.L;\n        this._map = L.map(this.$refs.mapEl, { center:[30,0], zoom:2, preferCanvas:true });\n        L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {\n          attribution:'&copy; OSM contributors &copy; CARTO', subdomains:'abcd', maxZoom:19\n        }).addTo(this._map);\n        this._layer = L.layerGroup().addTo(this._map);\n        this.ready = true;\n        if (this._pending) { this.update(this._pending); this._pending = null; }\n      });\n    },\n    update(sats) {\n      if (!this.ready) { this._pending = sats; return; }\n      const L = window.L;\n      const active = new Set(sats.map(s => s.name));\n      // Remove satellites that dropped below horizon\n      Object.keys(this.markers).forEach(n => {\n        if (!active.has(n)) {\n          this.markers[n].remove(); delete this.markers[n];\n          if (this.trails[n]) { this.trails[n].remove(); delete this.trails[n]; }\n        }\n      });\n      sats.forEach(sat => {\n        const c = this.col(sat.inc);\n        if (this.markers[sat.name]) {\n          this.markers[sat.name].setLatLng([sat.lat, sat.lon])\n            .setStyle({color:c, fillColor:c});\n        } else {\n          this.markers[sat.name] = L.circleMarker([sat.lat, sat.lon], {\n            radius:3, color:c, fillColor:c, fillOpacity:0.9, weight:0\n          }).bindTooltip(sat.name, {opacity:0.85}).addTo(this._layer);\n        }\n        if (sat.trail && sat.trail.length > 1) {\n          const pts = [...sat.trail, {lat:sat.lat, lon:sat.lon}].map(p => [p.lat, p.lon]);\n          if (this.trails[sat.name]) {\n            this.trails[sat.name].setLatLngs(pts);\n          } else {\n            this.trails[sat.name] = L.polyline(pts, {\n              color:c, weight:0.8, opacity:0.35\n            }).addTo(this._layer);\n          }\n        }\n      });\n    }\n  }\n}\n</script>",
+    "storeOutMessages": false,
+    "fwdInMessages": false,
+    "resendOnRefresh": true,
+    "templateScope": "local",
+    "className": "",
+    "x": 580,
+    "y": 240,
+    "wires": [
+      []
+    ]
+  },
+  {
+    "id": "ac_grp_svg",
+    "type": "ui-group",
+    "name": "SVG Polar Radar",
+    "page": "ac_page_svg",
+    "width": 6,
+    "height": 1,
+    "order": 1,
+    "showTitle": false,
+    "className": "",
+    "visible": true,
+    "disabled": false,
+    "groupType": "default"
+  },
+  {
+    "id": "ac_grp_canvas",
+    "type": "ui-group",
+    "name": "Canvas Polar Radar",
+    "page": "ac_page_canvas",
+    "width": 6,
+    "height": 1,
+    "order": 1,
+    "showTitle": false,
+    "className": "",
+    "visible": true,
+    "disabled": false,
+    "groupType": "default"
+  },
+  {
+    "id": "ac_grp_map",
+    "type": "ui-group",
+    "name": "Ground Track Map",
+    "page": "ac_page_map",
+    "width": 12,
+    "height": 1,
+    "order": 1,
+    "showTitle": false,
+    "className": "",
+    "visible": true,
+    "disabled": false,
+    "groupType": "default"
+  },
+  {
+    "id": "ac_page_svg",
+    "type": "ui-page",
+    "name": "SVG Radar",
+    "ui": "ac_ui_base",
+    "path": "/svg-radar",
+    "icon": "mdi-radar",
+    "layout": "grid",
+    "theme": "ac_ui_theme",
+    "breakpoints": [
+      {
+        "name": "Default",
+        "px": 0,
+        "cols": 3
+      },
+      {
+        "name": "Tablet",
+        "px": 576,
+        "cols": 6
+      },
+      {
+        "name": "Small Desktop",
+        "px": 768,
+        "cols": 9
+      },
+      {
+        "name": "Desktop",
+        "px": 1024,
+        "cols": 12
+      }
+    ],
+    "order": 1,
+    "className": "",
+    "visible": "true",
+    "disabled": "false"
+  },
+  {
+    "id": "ac_page_canvas",
+    "type": "ui-page",
+    "name": "Canvas Radar",
+    "ui": "ac_ui_base",
+    "path": "/canvas-radar",
+    "icon": "mdi-satellite-variant",
+    "layout": "grid",
+    "theme": "ac_ui_theme",
+    "breakpoints": [
+      {
+        "name": "Default",
+        "px": 0,
+        "cols": 3
+      },
+      {
+        "name": "Tablet",
+        "px": 576,
+        "cols": 6
+      },
+      {
+        "name": "Small Desktop",
+        "px": 768,
+        "cols": 9
+      },
+      {
+        "name": "Desktop",
+        "px": 1024,
+        "cols": 12
+      }
+    ],
+    "order": 2,
+    "className": "",
+    "visible": "true",
+    "disabled": "false"
+  },
+  {
+    "id": "ac_page_map",
+    "type": "ui-page",
+    "name": "Ground Track",
+    "ui": "ac_ui_base",
+    "path": "/ground-track",
+    "icon": "mdi-earth",
+    "layout": "grid",
+    "theme": "ac_ui_theme",
+    "breakpoints": [
+      {
+        "name": "Default",
+        "px": 0,
+        "cols": 3
+      },
+      {
+        "name": "Tablet",
+        "px": 576,
+        "cols": 6
+      },
+      {
+        "name": "Small Desktop",
+        "px": 768,
+        "cols": 9
+      },
+      {
+        "name": "Desktop",
+        "px": 1024,
+        "cols": 12
+      }
+    ],
+    "order": 3,
+    "className": "",
+    "visible": "true",
+    "disabled": "false"
+  },
+  {
+    "id": "ac_ui_base",
+    "type": "ui-base",
+    "name": "Starlink Tracker",
+    "path": "/starlink",
+    "appIcon": "",
+    "includeClientData": true,
+    "acceptsClientConfig": [
+      "ui-notification",
+      "ui-control",
+      "ui-chart",
+      "ui-template"
+    ],
+    "showPathInSidebar": false,
+    "headerContent": "page",
+    "navigationStyle": "default",
+    "titleBarStyle": "default",
+    "showReconnectNotification": true,
+    "notificationDisplayTime": 1,
+    "showDisconnectNotification": true,
+    "allowInstall": false
+  },
+  {
+    "id": "ac_ui_theme",
+    "type": "ui-theme",
+    "name": "Dark Theme",
+    "colors": {
+      "surface": "#1a1a2e",
+      "primary": "#00aaff",
+      "bgPage": "#0a0a1a",
+      "groupBg": "#0a0a1a",
+      "groupOutline": "#1a2840"
+    },
+    "sizes": {
+      "density": "default",
+      "pagePadding": "4px",
+      "groupGap": "4px",
+      "groupBorderRadius": "4px",
+      "widgetGap": "4px"
+    }
+  }
+]

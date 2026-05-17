@@ -1,0 +1,524 @@
+[
+    {
+        "id": "25dceb91744b787a",
+        "type": "tab",
+        "label": "Flow 2",
+        "disabled": false,
+        "info": "",
+        "env": []
+    },
+    {
+        "id": "91f6b74b99739ff8",
+        "type": "inject",
+        "z": "25dceb91744b787a",
+        "name": "",
+        "props": [
+            {
+                "p": "payload"
+            },
+            {
+                "p": "topic",
+                "vt": "str"
+            }
+        ],
+        "repeat": "7200",
+        "crontab": "",
+        "once": true,
+        "onceDelay": 2,
+        "topic": "",
+        "payload": "",
+        "payloadType": "date",
+        "x": 120,
+        "y": 120,
+        "wires": [
+            [
+                "flows_check_cache"
+            ]
+        ]
+    },
+    {
+        "id": "1d1426e4400ad2d2",
+        "type": "http request",
+        "z": "25dceb91744b787a",
+        "name": "Fetch Starlink TLEs",
+        "method": "GET",
+        "ret": "txt",
+        "paytoqs": "ignore",
+        "url": "https://celestrak.org/NORAD/elements/gp.php?GROUP=starlink&FORMAT=csv",
+        "tls": "",
+        "persist": false,
+        "proxy": "",
+        "insecureHTTPParser": false,
+        "authType": "",
+        "senderr": true,
+        "headers": [],
+        "x": 290,
+        "y": 120,
+        "wires": [
+            [
+                "flows_handle_resp"
+            ]
+        ]
+    },
+    {
+        "id": "63d11b6089f4aab0",
+        "type": "file in",
+        "z": "25dceb91744b787a",
+        "name": "SatData",
+        "filename": "/data/sat.csv",
+        "filenameType": "str",
+        "format": "",
+        "chunk": false,
+        "sendError": false,
+        "encoding": "none",
+        "allProps": false,
+        "x": 160,
+        "y": 440,
+        "wires": [
+            [
+                "ebd30e47765409ed"
+            ]
+        ]
+    },
+    {
+        "id": "7ea6a0d593172a5a",
+        "type": "function",
+        "z": "25dceb91744b787a",
+        "name": "F(x): Parse and Calculate Live Positions",
+        "func": "// 1. CONFIGURE YOUR PHYSICAL COORDINATES HERE\nconst OBSERVER_LAT = 51.0447;   // Your Latitude\nconst OBSERVER_LON = -114.0719; // Your Longitude\n\n// Safe Global Retrieval\nlet rawData = global.get(\"rawStarlinkData\");\nif (!rawData || typeof rawData !== 'string' || rawData.trim() === \"\") {\n    return null;\n}\n\nconst deg2rad = Math.PI / 180;\nconst lines = rawData.split('\\n');\nconst visibleSatellites = [];\n\n// Greenwich Apparent Sidereal Time \u2014 converts ECI longitude to Earth-fixed longitude\nconst J2000_ms = 946728000000;\nconst t_J2000 = (Date.now() - J2000_ms) / 86400000;\nconst GAST = (280.46061837 + 360.98564736629 * t_J2000) % 360;\n\nconst Re = 6371; // Earth radius (km)\nconst h  = 550;  // Starlink orbital altitude (km)\nconst obs_lat = OBSERVER_LAT * deg2rad;\nconst obs_lon = OBSERVER_LON * deg2rad;\n\nfor (let i = 0; i < lines.length; i++) {\n    const row = lines[i].split(',');\n    if (row.length < 9 || !row[0] || !row[0].startsWith(\"STARLINK\")) continue;\n\n    const name = row[0].trim();\n    const n    = parseFloat(row[3]); // mean motion (rev/day)\n    const inc  = parseFloat(row[5]) * deg2rad;\n    const raan = parseFloat(row[6]); // RAAN at epoch (degrees, ECI)\n    const argp = parseFloat(row[7]); // arg of pericenter (degrees)\n    const M0   = parseFloat(row[8]); // mean anomaly at epoch (degrees)\n\n    if (isNaN(n) || isNaN(inc) || isNaN(raan) || isNaN(argp) || isNaN(M0)) continue;\n\n    try {\n        // Propagate mean anomaly from epoch to now\n        const epoch_ms = new Date(row[2].trim()).getTime();\n        const dt_days = (Date.now() - epoch_ms) / 86400000;\n        const M = (M0 + n * dt_days * 360) % 360;\n\n        // Argument of latitude (\u03c9 + M; low-eccentricity orbits: M \u2248 true anomaly)\n        const u = (argp + M) * deg2rad;\n\n        // Sub-satellite point in geocentric coordinates\n        const sat_lat = Math.asin(Math.max(-1, Math.min(1, Math.sin(inc) * Math.sin(u))));\n        const lon_offset = Math.atan2(Math.cos(inc) * Math.sin(u), Math.cos(u)) / deg2rad;\n\n        // Convert ECI longitude to Earth-fixed (ECEF) using GAST\n        let sat_lon = ((raan + lon_offset) - GAST) % 360;\n        if (sat_lon > 180) sat_lon -= 360;\n\n        // Central angle between observer and sub-satellite point\n        const dlon = sat_lon * deg2rad - obs_lon;\n        const cos_c = Math.sin(obs_lat) * Math.sin(sat_lat) +\n                      Math.cos(obs_lat) * Math.cos(sat_lat) * Math.cos(dlon);\n\n        // Quick below-horizon reject\n        if (cos_c < Re / (Re + h)) continue;\n\n        const c = Math.acos(Math.max(-1, Math.min(1, cos_c)));\n        const elevation = Math.atan((cos_c - Re / (Re + h)) / Math.sin(c)) / deg2rad;\n        if (elevation <= 0) continue;\n\n        // Azimuth (bearing from observer to sub-satellite point)\n        const az = (Math.atan2(\n            Math.sin(dlon) * Math.cos(sat_lat),\n            Math.cos(obs_lat) * Math.sin(sat_lat) - Math.sin(obs_lat) * Math.cos(sat_lat) * Math.cos(dlon)\n        ) / deg2rad + 360) % 360;\n\n        // Polar radar mapping: zenith = center (radius 0), horizon = edge (radius 90)\n        const radius = 90 - elevation;\n        const angleRad = (az - 90) * deg2rad;\n        visibleSatellites.push({\n            x: parseFloat((radius * Math.cos(angleRad)).toFixed(2)),\n            y: parseFloat((radius * Math.sin(angleRad)).toFixed(2)),\n            label: name\n        });\n    } catch(e) {}\n}\n\nmsg.topic = \"Starlink\";\nmsg.payload = visibleSatellites.slice(0, 500);\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 340,
+        "y": 640,
+        "wires": [
+            [
+                "9f4f3961706a93e3",
+                "e98b2d723b4970bb"
+            ]
+        ]
+    },
+    {
+        "id": "9f4f3961706a93e3",
+        "type": "debug",
+        "z": "25dceb91744b787a",
+        "name": "debug 2",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "true",
+        "targetType": "full",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 600,
+        "y": 640,
+        "wires": []
+    },
+    {
+        "id": "182bda12811bbba7",
+        "type": "inject",
+        "z": "25dceb91744b787a",
+        "name": "",
+        "props": [
+            {
+                "p": "payload"
+            },
+            {
+                "p": "topic",
+                "vt": "str"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "",
+        "payloadType": "date",
+        "x": 160,
+        "y": 360,
+        "wires": [
+            [
+                "63d11b6089f4aab0"
+            ]
+        ]
+    },
+    {
+        "id": "874b05eccfe15c60",
+        "type": "file",
+        "z": "25dceb91744b787a",
+        "name": "",
+        "filename": "",
+        "filenameType": "str",
+        "appendNewline": true,
+        "createDir": false,
+        "overwriteFile": "true",
+        "encoding": "none",
+        "x": 700,
+        "y": 120,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "1306bbd77c831dff",
+        "type": "change",
+        "z": "25dceb91744b787a",
+        "name": "",
+        "rules": [
+            {
+                "t": "set",
+                "p": "filename",
+                "pt": "msg",
+                "to": "\"/data/sat_\" & $millis() * \".csv\"",
+                "tot": "jsonata"
+            }
+        ],
+        "action": "",
+        "property": "",
+        "from": "",
+        "to": "",
+        "reg": false,
+        "x": 510,
+        "y": 120,
+        "wires": [
+            [
+                "874b05eccfe15c60"
+            ]
+        ]
+    },
+    {
+        "id": "ebd30e47765409ed",
+        "type": "function",
+        "z": "25dceb91744b787a",
+        "name": "f(x): CSV to Memory",
+        "func": "// Save the raw text into global memory so other nodes can access it\nglobal.set(\"rawStarlinkData\", msg.payload.toString());\nreturn null; // Stop the message here so it doesn't trigger the map graph yet",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 200,
+        "y": 480,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "ed7d2e6c96848e62",
+        "type": "inject",
+        "z": "25dceb91744b787a",
+        "name": "Frame Generator",
+        "props": [
+            {
+                "p": "payload"
+            },
+            {
+                "p": "topic",
+                "vt": "str"
+            }
+        ],
+        "repeat": "1",
+        "crontab": "",
+        "once": true,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "",
+        "payloadType": "date",
+        "x": 190,
+        "y": 580,
+        "wires": [
+            [
+                "7ea6a0d593172a5a"
+            ]
+        ]
+    },
+    {
+        "id": "e98b2d723b4970bb",
+        "type": "ui-chart",
+        "z": "25dceb91744b787a",
+        "group": "68132537e5f798e3",
+        "name": "",
+        "label": "chart",
+        "order": 1,
+        "chartType": "scatter",
+        "category": "topic",
+        "categoryType": "msg",
+        "xAxisLabel": "",
+        "xAxisProperty": "x",
+        "xAxisPropertyType": "property",
+        "xAxisType": "linear",
+        "xAxisFormat": "",
+        "xAxisFormatType": "auto",
+        "xmin": "-90",
+        "xmax": "90",
+        "yAxisLabel": "",
+        "yAxisProperty": "y",
+        "yAxisPropertyType": "property",
+        "ymin": "-90",
+        "ymax": "90",
+        "bins": 10,
+        "action": "append",
+        "stackSeries": false,
+        "pointShape": "circle",
+        "pointRadius": 4,
+        "showLegend": false,
+        "removeOlder": 1,
+        "removeOlderUnit": "3600",
+        "removeOlderPoints": "",
+        "colors": [
+            "#0095ff",
+            "#ff0000",
+            "#ff7f0e",
+            "#2ca02c",
+            "#a347e1",
+            "#d62728",
+            "#ff9896",
+            "#9467bd",
+            "#c5b0d5"
+        ],
+        "textColor": [
+            "#666666"
+        ],
+        "textColorDefault": true,
+        "gridColor": [
+            "#e5e5e5"
+        ],
+        "gridColorDefault": true,
+        "width": 6,
+        "height": 8,
+        "className": "",
+        "interpolation": "linear",
+        "x": 610,
+        "y": 760,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "07ec439959f1cade",
+        "type": "inject",
+        "z": "25dceb91744b787a",
+        "name": "",
+        "props": [
+            {
+                "p": "payload"
+            },
+            {
+                "p": "topic",
+                "vt": "str"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "[]",
+        "payloadType": "json",
+        "x": 390,
+        "y": 780,
+        "wires": [
+            [
+                "e98b2d723b4970bb"
+            ]
+        ]
+    },
+    {
+        "id": "68132537e5f798e3",
+        "type": "ui-group",
+        "name": "Group 1",
+        "page": "118a9c8853ce3a29",
+        "width": 6,
+        "height": 1,
+        "order": 1,
+        "showTitle": true,
+        "className": "",
+        "visible": true,
+        "disabled": false,
+        "groupType": "default"
+    },
+    {
+        "id": "118a9c8853ce3a29",
+        "type": "ui-page",
+        "name": "Page 1",
+        "ui": "776d725043927eb6",
+        "path": "/page1",
+        "icon": "home",
+        "layout": "grid",
+        "theme": "d4a9b35c242745c2",
+        "breakpoints": [
+            {
+                "name": "Default",
+                "px": 0,
+                "cols": 3
+            },
+            {
+                "name": "Tablet",
+                "px": 576,
+                "cols": 6
+            },
+            {
+                "name": "Small Desktop",
+                "px": 768,
+                "cols": 9
+            },
+            {
+                "name": "Desktop",
+                "px": 1024,
+                "cols": 12
+            }
+        ],
+        "order": 1,
+        "className": "",
+        "visible": "true",
+        "disabled": "false"
+    },
+    {
+        "id": "776d725043927eb6",
+        "type": "ui-base",
+        "name": "My Dashboard",
+        "path": "/dashboard",
+        "appIcon": "",
+        "includeClientData": true,
+        "acceptsClientConfig": [
+            "ui-notification",
+            "ui-control",
+            "ui-chart"
+        ],
+        "showPathInSidebar": false,
+        "headerContent": "page",
+        "navigationStyle": "default",
+        "titleBarStyle": "default",
+        "showReconnectNotification": true,
+        "notificationDisplayTime": 1,
+        "showDisconnectNotification": true,
+        "allowInstall": false
+    },
+    {
+        "id": "d4a9b35c242745c2",
+        "type": "ui-theme",
+        "name": "Default Theme",
+        "colors": {
+            "surface": "#ffffff",
+            "primary": "#0094CE",
+            "bgPage": "#eeeeee",
+            "groupBg": "#ffffff",
+            "groupOutline": "#cccccc"
+        },
+        "sizes": {
+            "density": "default",
+            "pagePadding": "12px",
+            "groupGap": "12px",
+            "groupBorderRadius": "4px",
+            "widgetGap": "12px"
+        }
+    },
+    {
+        "id": "ba3820e824dfecc9",
+        "type": "global-config",
+        "env": [],
+        "modules": {
+            "@flowfuse/node-red-dashboard": "1.30.2"
+        }
+    },
+    {
+        "id": "flows_check_cache",
+        "type": "function",
+        "z": "25dceb91744b787a",
+        "name": "Check Cache Age",
+        "func": "// Check if local cache is fresh enough (< 2 hours)\nconst CACHE = '/data/starlink_tle_cache.csv';\nconst TWO_HOURS = 2 * 60 * 60 * 1000;\ntry {\n    const stat = fs.statSync(CACHE);\n    const age  = Date.now() - stat.mtimeMs;\n    if (age < TWO_HOURS) {\n        const data = fs.readFileSync(CACHE, 'utf8');\n        global.set('rawStarlinkData', data);\n        global.set('satHistory', {});\n        node.status({fill:'green', shape:'dot', text:`cache ${Math.round(age/60000)}m old`});\n        return null; // skip HTTP fetch\n    }\n} catch(e) { /* no cache yet */ }\nreturn msg; // cache stale or missing \u2014 fetch",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [
+            {
+                "var": "fs",
+                "module": "fs"
+            }
+        ],
+        "x": 200,
+        "y": 40,
+        "wires": [
+            [
+                "1d1426e4400ad2d2"
+            ]
+        ]
+    },
+    {
+        "id": "flows_handle_resp",
+        "type": "function",
+        "z": "25dceb91744b787a",
+        "name": "HTTP OK?",
+        "func": "// Route: success \u2192 port 1, HTTP error \u2192 port 2 (cache fallback)\nif (msg.error || (msg.statusCode && msg.statusCode !== 200)) {\n    node.warn('HTTP fetch failed (' + (msg.error || msg.statusCode) + ') \u2014 trying cache');\n    return [null, msg];\n}\nreturn [msg, null];",
+        "outputs": 2,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 480,
+        "y": 40,
+        "wires": [
+            [
+                "flows_save_store"
+            ],
+            [
+                "flows_load_cache"
+            ]
+        ]
+    },
+    {
+        "id": "flows_save_store",
+        "type": "function",
+        "z": "25dceb91744b787a",
+        "name": "Save & Store TLE",
+        "func": "// Save fresh TLE data to cache file and load into global\nconst CACHE = '/data/starlink_tle_cache.csv';\ntry {\n    fs.writeFileSync(CACHE, msg.payload);\n} catch(e) {\n    node.warn('Could not write cache: ' + e.message);\n}\nglobal.set('rawStarlinkData', msg.payload);\nglobal.set('satHistory', {});\nnode.status({fill:'blue', shape:'dot', text:`fetched ${new Date().toLocaleTimeString()}`});\nreturn null;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [
+            {
+                "var": "fs",
+                "module": "fs"
+            }
+        ],
+        "x": 680,
+        "y": 20,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "flows_load_cache",
+        "type": "function",
+        "z": "25dceb91744b787a",
+        "name": "Load Cache Fallback",
+        "func": "// HTTP failed \u2014 load from cache file if available\nconst CACHE = '/data/starlink_tle_cache.csv';\ntry {\n    const data = fs.readFileSync(CACHE, 'utf8');\n    global.set('rawStarlinkData', data);\n    global.set('satHistory', {});\n    node.status({fill:'yellow', shape:'ring', text:`HTTP error, using cache ${new Date().toLocaleTimeString()}`});\n} catch(e) {\n    node.error('HTTP fetch failed and no cache available: ' + e.message);\n}\nreturn null;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [
+            {
+                "var": "fs",
+                "module": "fs"
+            }
+        ],
+        "x": 680,
+        "y": 60,
+        "wires": [
+            []
+        ]
+    }
+]
