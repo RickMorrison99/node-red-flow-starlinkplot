@@ -1,31 +1,418 @@
 [
   {
+    "id": "ac_ui_base",
+    "type": "ui-base",
+    "acceptsClientConfig": [
+      "ui-notification",
+      "ui-control"
+    ],
+    "showPathInSidebar": false,
+    "navigationStyle": "default",
+    "titleBarStyle": "default"
+  },
+  {
+    "id": "ac_ui_theme",
+    "type": "ui-theme",
+    "name": "Starlink Dark",
+    "colors": {
+      "surface": "#0a0a1a",
+      "primary": "#00aaff",
+      "bgPage": "#060610",
+      "groupBg": "#0a0f1f",
+      "groupOutline": "#1a2a3a"
+    },
+    "sizes": {
+      "density": "default",
+      "pagePadding": "6px",
+      "groupGap": "6px",
+      "groupBorderRadius": "4px",
+      "widgetGap": "4px"
+    }
+  },
+  {
     "id": "ac_tab",
     "type": "tab",
     "label": "AllCharts",
     "disabled": false,
-    "info": "",
-    "env": []
+    "info": ""
+  },
+  {
+    "id": "ac_page_svg",
+    "type": "ui-page",
+    "name": "SVG Radar",
+    "ui": "ac_ui_base",
+    "path": "/starlink/svg-radar",
+    "icon": "mdi-satellite-variant",
+    "layout": "grid",
+    "themeId": "ac_ui_theme",
+    "breakpoints": [
+      {
+        "name": "Default",
+        "px": 0,
+        "cols": 3
+      }
+    ],
+    "order": 1,
+    "groups": []
+  },
+  {
+    "id": "ac_page_canvas",
+    "type": "ui-page",
+    "name": "Canvas Radar",
+    "ui": "ac_ui_base",
+    "path": "/starlink/canvas-radar",
+    "icon": "mdi-satellite-variant",
+    "layout": "grid",
+    "themeId": "ac_ui_theme",
+    "breakpoints": [
+      {
+        "name": "Default",
+        "px": 0,
+        "cols": 3
+      }
+    ],
+    "order": 1,
+    "groups": []
+  },
+  {
+    "id": "ac_page_map",
+    "type": "ui-page",
+    "name": "Ground Track",
+    "ui": "ac_ui_base",
+    "path": "/starlink/ground-track",
+    "icon": "mdi-satellite-variant",
+    "layout": "grid",
+    "themeId": "ac_ui_theme",
+    "breakpoints": [
+      {
+        "name": "Default",
+        "px": 0,
+        "cols": 3
+      }
+    ],
+    "order": 1,
+    "groups": []
+  },
+  {
+    "id": "ac_page_settings",
+    "type": "ui-page",
+    "name": "Settings",
+    "ui": "ac_ui_base",
+    "path": "/starlink/settings",
+    "icon": "mdi-satellite-variant",
+    "layout": "grid",
+    "themeId": "ac_ui_theme",
+    "breakpoints": [
+      {
+        "name": "Default",
+        "px": 0,
+        "cols": 3
+      }
+    ],
+    "order": 1,
+    "groups": []
+  },
+  {
+    "id": "ac_grp_svg",
+    "type": "ui-group",
+    "name": "SVG Radar",
+    "page": "ac_page_svg",
+    "ui": "ac_ui_base",
+    "width": "3",
+    "height": "1",
+    "order": 1,
+    "showTitle": false,
+    "className": ""
+  },
+  {
+    "id": "ac_grp_canvas",
+    "type": "ui-group",
+    "name": "Canvas Radar",
+    "page": "ac_page_canvas",
+    "ui": "ac_ui_base",
+    "width": "3",
+    "height": "1",
+    "order": 1,
+    "showTitle": false,
+    "className": ""
+  },
+  {
+    "id": "ac_grp_map",
+    "type": "ui-group",
+    "name": "Ground Track",
+    "page": "ac_page_map",
+    "ui": "ac_ui_base",
+    "width": "3",
+    "height": "1",
+    "order": 1,
+    "showTitle": false,
+    "className": ""
+  },
+  {
+    "id": "ac_grp_notif",
+    "type": "ui-group",
+    "name": "Alerts",
+    "page": "ac_page_svg",
+    "ui": "ac_ui_base",
+    "width": "3",
+    "height": "1",
+    "order": 1,
+    "showTitle": false,
+    "className": ""
+  },
+  {
+    "id": "ac_grp_settings",
+    "type": "ui-group",
+    "name": "Settings",
+    "page": "ac_page_settings",
+    "ui": "ac_ui_base",
+    "width": "3",
+    "height": "1",
+    "order": 1,
+    "showTitle": false,
+    "className": ""
+  },
+  {
+    "id": "ac_svg_tpl",
+    "type": "ui-template",
+    "z": "ac_tab",
+    "group": "ac_grp_svg",
+    "page": "",
+    "ui": "ac_ui_base",
+    "name": "SVG Polar Radar",
+    "order": 1,
+    "width": "3",
+    "height": "0",
+    "head": "",
+    "format": "<template>\n  <div style=\"background:#0a0a1a;display:flex;flex-direction:column;align-items:center;padding:4px;font-family:monospace\">\n    <!-- Status bar: Issue #10 TLE age -->\n    <div style=\"display:flex;gap:12px;font-size:10px;margin-bottom:2px;width:100%;max-width:380px;justify-content:space-between\">\n      <span style=\"color:#445566\">{{ meta.count }} visible &nbsp;\u00b7&nbsp; SVG</span>\n      <span :style=\"{color: ageColor}\">TLE age: {{ tleAge }}</span>\n      <span style=\"color:#445566\">{{ ts }}</span>\n    </div>\n    <!-- Issue #8: filter controls -->\n    <div style=\"display:flex;gap:8px;flex-wrap:wrap;font-size:9px;margin-bottom:4px;max-width:380px\">\n      <label style=\"color:#667\">Min el:\n        <input type=\"range\" min=\"0\" max=\"60\" v-model.number=\"minEl\" @change=\"sendFilter\" style=\"width:60px;vertical-align:middle\">\n        <span style=\"color:#aab\">{{ minEl }}\u00b0</span>\n      </label>\n      <span v-for=\"s in shellOpts\" :key=\"s.deg\" style=\"cursor:pointer\" @click=\"toggleShell(s.deg)\">\n        <span :style=\"{color: activeShells.includes(s.deg) ? s.color : '#333'}\">&#9679;</span>\n        <span :style=\"{color: activeShells.includes(s.deg) ? '#aaa' : '#444'}\">{{ s.deg }}\u00b0</span>\n      </span>\n    </div>\n    <svg viewBox=\"0 0 360 360\" style=\"width:100%;max-width:380px;height:auto\">\n      <rect width=\"360\" height=\"360\" fill=\"#0a0a1a\"/>\n      <!-- Elevation rings -->\n      <circle cx=\"180\" cy=\"180\" r=\"170\" fill=\"none\" stroke=\"#1e2e3e\" stroke-width=\"1\"/>\n      <circle cx=\"180\" cy=\"180\" r=\"113\" fill=\"none\" stroke=\"#1e2e3e\" stroke-width=\"1\" stroke-dasharray=\"4,5\"/>\n      <circle cx=\"180\" cy=\"180\" r=\"57\"  fill=\"none\" stroke=\"#1e2e3e\" stroke-width=\"1\" stroke-dasharray=\"4,5\"/>\n      <!-- Crosshairs -->\n      <line x1=\"180\" y1=\"10\"  x2=\"180\" y2=\"350\" stroke=\"#192838\" stroke-width=\"0.5\"/>\n      <line x1=\"10\"  y1=\"180\" x2=\"350\" y2=\"180\" stroke=\"#192838\" stroke-width=\"0.5\"/>\n      <!-- Cardinal labels -->\n      <text x=\"180\" y=\"9\"   fill=\"#3a5a7a\" font-size=\"11\" text-anchor=\"middle\">N</text>\n      <text x=\"180\" y=\"358\" fill=\"#3a5a7a\" font-size=\"11\" text-anchor=\"middle\">S</text>\n      <text x=\"356\" y=\"184\" fill=\"#3a5a7a\" font-size=\"11\" text-anchor=\"end\">E</text>\n      <text x=\"4\"   y=\"184\" fill=\"#3a5a7a\" font-size=\"11\">W</text>\n      <!-- Elevation labels -->\n      <text x=\"184\" y=\"73\"  fill=\"#2a3a4a\" font-size=\"8\">60\u00b0</text>\n      <text x=\"184\" y=\"129\" fill=\"#2a3a4a\" font-size=\"8\">30\u00b0</text>\n      <!-- Trails -->\n      <g v-for=\"sat in sats\" :key=\"'t_'+sat.name\">\n        <polyline v-if=\"sat.trail && sat.trail.length > 1\"\n          :points=\"tp(sat.trail)\"\n          fill=\"none\" :stroke=\"col(sat.shell)\" stroke-width=\"0.7\" opacity=\"0.3\"/>\n      </g>\n      <!-- Satellite dots: Issue #7 selected highlight, Issue #12 illuminated ring -->\n      <g v-for=\"sat in sats\" :key=\"sat.name\" @click=\"selectSat(sat)\" style=\"cursor:pointer\">\n        <circle v-if=\"sat.illuminated && meta.observerDark\"\n          :cx=\"px(sat.el,sat.az)\" :cy=\"py(sat.el,sat.az)\" r=\"4.5\"\n          fill=\"none\" stroke=\"#ffe066\" stroke-width=\"0.8\" opacity=\"0.7\"/>\n        <circle :cx=\"px(sat.el,sat.az)\" :cy=\"py(sat.el,sat.az)\"\n          :r=\"sat.selected ? 4 : 2.2\"\n          :fill=\"col(sat.shell)\"\n          :opacity=\"sat.selected ? 1 : 0.85\"/>\n        <text v-if=\"sat.selected\"\n          :x=\"+px(sat.el,sat.az)+5\" :y=\"+py(sat.el,sat.az)-3\"\n          fill=\"#fff\" font-size=\"7\" font-family=\"monospace\">{{ sat.name.replace('STARLINK-','') }}</text>\n      </g>\n    </svg>\n    <!-- Legend + illumination note -->\n    <div style=\"display:flex;gap:10px;margin-top:4px;font-size:9px;flex-wrap:wrap;justify-content:center\">\n      <span v-for=\"s in shellOpts\" :key=\"s.deg\" :style=\"{color:s.color}\">&#9679; {{ s.deg }}\u00b0</span>\n      <span v-if=\"meta.observerDark\" style=\"color:#ffe066\">&#9675; sunlit</span>\n    </div>\n    <!-- Issue #7: selected satellite detail panel -->\n    <div v-if=\"selected\" style=\"margin-top:6px;background:#0f1a2a;border:1px solid #1e3a5a;border-radius:4px;padding:6px 10px;font-size:10px;color:#8ab;max-width:380px;width:100%\">\n      <div style=\"color:#cde;font-weight:bold;margin-bottom:3px\">{{ selected.name }}</div>\n      <div style=\"display:grid;grid-template-columns:1fr 1fr 1fr;gap:2px\">\n        <span>El: <b style=\"color:#fff\">{{ selected.el }}\u00b0</b></span>\n        <span>Az: <b style=\"color:#fff\">{{ selected.az }}\u00b0</b></span>\n        <span>Inc: <b style=\"color:#fff\">{{ selected.inc }}\u00b0</b></span>\n        <span>Lat: <b style=\"color:#fff\">{{ selected.lat }}\u00b0</b></span>\n        <span>Lon: <b style=\"color:#fff\">{{ selected.lon }}\u00b0</b></span>\n        <span :style=\"{color: selected.illuminated ? '#ffe066' : '#556'}\">{{ selected.illuminated ? '\u2600 sunlit' : '\u25cf dark' }}</span>\n      </div>\n    </div>\n  </div>\n</template>\n<script>\nexport default {\n  props: ['msg'],\n  data() { return {\n    sats: [], meta: { count:0, tleFetchedAt:0, tleAgeMs:0, observerDark:false, sunEl:0 },\n    ts: '', selected: null,\n    minEl: 0, activeShells: [43,53,70,97],\n    shellOpts: [{deg:43,color:'#ff7700'},{deg:53,color:'#00aaff'},{deg:70,color:'#00ee88'},{deg:97,color:'#cc44ff'}]\n  }},\n  computed: {\n    tleAge() {\n      const m = Math.floor(this.meta.tleAgeMs / 60000);\n      return m < 60 ? `${m}m` : `${Math.floor(m/60)}h ${m%60}m`;\n    },\n    ageColor() {\n      const h = this.meta.tleAgeMs / 3600000;\n      return h < 1 ? '#00ee88' : h < 2 ? '#ffaa00' : '#ff4444';\n    }\n  },\n  watch: {\n    msg(v) {\n      if (!v?.payload) return;\n      this.sats = v.payload.sats;\n      this.meta = v.payload.meta;\n      this.ts   = new Date(this.meta.ts).toLocaleTimeString();\n      const sel = this.sats.find(s => s.selected);\n      if (sel) this.selected = sel;\n    }\n  },\n  methods: {\n    col(shell) { return shell===43?'#ff7700':shell===53?'#00aaff':shell===70?'#00ee88':'#cc44ff'; },\n    px(el,az)  { return (180 + 170*(90-el)/90*Math.sin(az*Math.PI/180)).toFixed(1); },\n    py(el,az)  { return (180 - 170*(90-el)/90*Math.cos(az*Math.PI/180)).toFixed(1); },\n    tp(trail)  {\n      return trail.map(p =>\n        `${(180+170*(90-p.el)/90*Math.sin(p.az*Math.PI/180)).toFixed(1)},`+\n        `${(180-170*(90-p.el)/90*Math.cos(p.az*Math.PI/180)).toFixed(1)}`\n      ).join(' ');\n    },\n    selectSat(sat) {\n      this.selected = sat;\n      this.send({ topic:'select', payload:{ name: sat.name } });\n    },\n    toggleShell(deg) {\n      const i = this.activeShells.indexOf(deg);\n      if (i >= 0) this.activeShells.splice(i,1); else this.activeShells.push(deg);\n      this.sendFilter();\n    },\n    sendFilter() {\n      this.send({ topic:'filter', payload:{ minEl:this.minEl, shells:[...this.activeShells], maxSats:300 } });\n    }\n  }\n}\n</script>",
+    "templateScope": "local",
+    "className": "",
+    "x": 900,
+    "y": 100,
+    "wires": [
+      []
+    ]
+  },
+  {
+    "id": "ac_canvas_tpl",
+    "type": "ui-template",
+    "z": "ac_tab",
+    "group": "ac_grp_canvas",
+    "page": "",
+    "ui": "ac_ui_base",
+    "name": "Canvas Polar Radar",
+    "order": 1,
+    "width": "3",
+    "height": "0",
+    "head": "",
+    "format": "<template>\n  <div style=\"background:#0a0a1a;display:flex;flex-direction:column;align-items:center;padding:4px;font-family:monospace\">\n    <div style=\"display:flex;gap:12px;font-size:10px;margin-bottom:2px;width:100%;max-width:380px;justify-content:space-between\">\n      <span style=\"color:#445566\">{{ meta.count }} visible &nbsp;\u00b7&nbsp; Canvas</span>\n      <span :style=\"{color: ageColor}\">TLE age: {{ tleAge }}</span>\n    </div>\n    <canvas ref=\"cv\" width=\"360\" height=\"360\" style=\"max-width:100%;cursor:crosshair\" @click=\"onClick\"/>\n    <!-- Issue #12 illumination note -->\n    <div style=\"display:flex;gap:10px;margin-top:4px;font-size:9px;flex-wrap:wrap;justify-content:center\">\n      <span style=\"color:#ff7700\">&#9679; 43\u00b0</span><span style=\"color:#00aaff\">&#9679; 53\u00b0</span>\n      <span style=\"color:#00ee88\">&#9679; 70\u00b0</span><span style=\"color:#cc44ff\">&#9679; 97\u00b0</span>\n      <span v-if=\"meta.observerDark\" style=\"color:#ffe066\">&#9675; sunlit</span>\n    </div>\n    <!-- Issue #7: selected detail panel -->\n    <div v-if=\"selected\" style=\"margin-top:6px;background:#0f1a2a;border:1px solid #1e3a5a;border-radius:4px;padding:6px 10px;font-size:10px;color:#8ab;max-width:380px;width:100%\">\n      <div style=\"color:#cde;font-weight:bold\">{{ selected.name }}</div>\n      <div>El: <b style=\"color:#fff\">{{ selected.el }}\u00b0</b> &nbsp; Az: <b style=\"color:#fff\">{{ selected.az }}\u00b0</b> &nbsp; Inc: {{ selected.inc }}\u00b0</div>\n      <div>Lat: {{ selected.lat }}\u00b0 &nbsp; Lon: {{ selected.lon }}\u00b0 &nbsp;\n        <span :style=\"{color: selected.illuminated ? '#ffe066':'#556'}\">{{ selected.illuminated ? '\u2600 sunlit':'\u25cf dark' }}</span>\n      </div>\n    </div>\n  </div>\n</template>\n<script>\nexport default {\n  props: ['msg'],\n  data() { return { meta:{ count:0, tleAgeMs:0, observerDark:false }, lastSats:[], selected:null } },\n  computed: {\n    tleAge() { const m=Math.floor(this.meta.tleAgeMs/60000); return m<60?`${m}m`:`${Math.floor(m/60)}h ${m%60}m`; },\n    ageColor() { const h=this.meta.tleAgeMs/3600000; return h<1?'#00ee88':h<2?'#ffaa00':'#ff4444'; }\n  },\n  watch: {\n    msg(v) {\n      if (!v?.payload) return;\n      this.meta     = v.payload.meta;\n      this.lastSats = v.payload.sats;\n      const sel = this.lastSats.find(s => s.selected);\n      if (sel) this.selected = sel;\n      this.$nextTick(() => this.draw(this.lastSats));\n    }\n  },\n  methods: {\n    col(shell) { return shell===43?'#ff7700':shell===53?'#00aaff':shell===70?'#00ee88':'#cc44ff'; },\n    hex2rgba(hex,a) { const n=parseInt(hex.slice(1),16); return `rgba(${n>>16},${(n>>8)&255},${n&255},${a})`; },\n    draw(sats) {\n      const cv=this.$refs.cv; if(!cv) return;\n      const ctx=cv.getContext('2d'), cx=180, cy=180, R=170;\n      ctx.fillStyle='#0a0a1a'; ctx.fillRect(0,0,360,360);\n      [[R,[]],[R*2/3,[4,5]],[R/3,[4,5]]].forEach(([r,dash])=>{\n        ctx.beginPath(); ctx.arc(cx,cy,r,0,Math.PI*2);\n        ctx.setLineDash(dash); ctx.strokeStyle='#1e2e3e'; ctx.lineWidth=1; ctx.stroke();\n      });\n      ctx.setLineDash([]);\n      ctx.strokeStyle='#192838'; ctx.lineWidth=0.5;\n      [[cx,10,cx,350],[10,cy,350,cy]].forEach(([x1,y1,x2,y2])=>{ ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2); ctx.stroke(); });\n      ctx.font='11px monospace'; ctx.fillStyle='#3a5a7a';\n      ctx.textAlign='center'; ctx.fillText('N',cx,9); ctx.fillText('S',cx,358);\n      ctx.textAlign='right'; ctx.fillText('E',356,184);\n      ctx.textAlign='left'; ctx.fillText('W',4,184);\n      ctx.font='8px monospace'; ctx.fillStyle='#2a3a4a';\n      ctx.fillText('60\u00b0',184,73); ctx.fillText('30\u00b0',184,129);\n      // Trails\n      sats.forEach(s=>{\n        if(!s.trail||s.trail.length<2) return;\n        ctx.beginPath();\n        s.trail.forEach((p,i)=>{ const r=R*(90-p.el)/90,x=cx+r*Math.sin(p.az*Math.PI/180),y=cy-r*Math.cos(p.az*Math.PI/180); i===0?ctx.moveTo(x,y):ctx.lineTo(x,y); });\n        ctx.strokeStyle=this.hex2rgba(this.col(s.shell),0.3); ctx.lineWidth=0.7; ctx.stroke();\n      });\n      // Dots \u2014 Issue #7 selected highlight, Issue #12 sunlit ring\n      sats.forEach(s=>{\n        const r=R*(90-s.el)/90, x=cx+r*Math.sin(s.az*Math.PI/180), y=cy-r*Math.cos(s.az*Math.PI/180);\n        if(s.illuminated && this.meta.observerDark) {\n          ctx.beginPath(); ctx.arc(x,y,4.5,0,Math.PI*2);\n          ctx.strokeStyle='rgba(255,224,102,0.7)'; ctx.lineWidth=0.8; ctx.stroke();\n        }\n        ctx.beginPath(); ctx.arc(x,y,s.selected?4:2.2,0,Math.PI*2);\n        ctx.fillStyle=this.col(s.shell); ctx.globalAlpha=s.selected?1:0.85; ctx.fill(); ctx.globalAlpha=1;\n        if(s.selected) {\n          ctx.font='8px monospace'; ctx.fillStyle='#fff'; ctx.textAlign='left';\n          ctx.fillText(s.name.replace('STARLINK-',''), x+5, y-3);\n        }\n      });\n    },\n    onClick(e) {\n      const cv=this.$refs.cv; if(!cv||!this.lastSats.length) return;\n      const rect=cv.getBoundingClientRect();\n      const scaleX=360/rect.width, scaleY=360/rect.height;\n      const mx=(e.clientX-rect.left)*scaleX, my=(e.clientY-rect.top)*scaleY;\n      const cx=180, cy=180, R=170;\n      let best=null, bestD=16;\n      this.lastSats.forEach(s=>{\n        const r=R*(90-s.el)/90, x=cx+r*Math.sin(s.az*Math.PI/180), y=cy-r*Math.cos(s.az*Math.PI/180);\n        const d=Math.hypot(mx-x,my-y);\n        if(d<bestD){bestD=d;best=s;}\n      });\n      if(best){ this.selected=best; this.send({topic:'select',payload:{name:best.name}}); }\n    }\n  }\n}\n</script>",
+    "templateScope": "local",
+    "className": "",
+    "x": 900,
+    "y": 100,
+    "wires": [
+      []
+    ]
+  },
+  {
+    "id": "ac_map_tpl",
+    "type": "ui-template",
+    "z": "ac_tab",
+    "group": "ac_grp_map",
+    "page": "",
+    "ui": "ac_ui_base",
+    "name": "Leaflet Ground Track",
+    "order": 1,
+    "width": "3",
+    "height": "0",
+    "head": "",
+    "format": "<template>\n  <div style=\"width:100%;font-family:monospace\">\n    <!-- Issue #10: status bar -->\n    <div style=\"background:#0a0a1a;display:flex;gap:12px;font-size:10px;padding:3px 8px;justify-content:space-between\">\n      <span style=\"color:#445566\">{{ meta.count }} visible &nbsp;\u00b7&nbsp; Ground Track</span>\n      <span :style=\"{color: ageColor}\">TLE age: {{ tleAge }}</span>\n      <span v-if=\"selected\" style=\"color:#cde\">{{ selected.name }} El:{{ selected.el }}\u00b0 Az:{{ selected.az }}\u00b0</span>\n    </div>\n    <div ref=\"mapEl\" style=\"width:100%;height:460px\"/>\n    <!-- Issue #7: selected detail panel -->\n    <div v-if=\"selected\" style=\"background:#0f1a2a;border-top:1px solid #1e3a5a;padding:5px 10px;font-size:10px;color:#8ab;display:flex;gap:16px\">\n      <span style=\"color:#cde;font-weight:bold\">{{ selected.name }}</span>\n      <span>El: <b style=\"color:#fff\">{{ selected.el }}\u00b0</b></span>\n      <span>Az: <b style=\"color:#fff\">{{ selected.az }}\u00b0</b></span>\n      <span>Lat: {{ selected.lat }}\u00b0</span>\n      <span>Lon: {{ selected.lon }}\u00b0</span>\n      <span :style=\"{color: selected.illuminated?'#ffe066':'#556'}\">{{ selected.illuminated?'\u2600 sunlit':'\u25cf dark' }}</span>\n    </div>\n  </div>\n</template>\n<script>\nexport default {\n  props: ['msg'],\n  data() { return { ready:false, markers:{}, trails:{}, meta:{ count:0, tleAgeMs:0, observerDark:false }, selected:null } },\n  computed: {\n    tleAge() { const m=Math.floor(this.meta.tleAgeMs/60000); return m<60?`${m}m`:`${Math.floor(m/60)}h ${m%60}m`; },\n    ageColor() { const h=this.meta.tleAgeMs/3600000; return h<1?'#00ee88':h<2?'#ffaa00':'#ff4444'; }\n  },\n  mounted() { this.$nextTick(() => this.init()); },\n  beforeUnmount() { if(this._map){this._map.remove();this._map=null;} },\n  watch: {\n    msg(v) { if(v?.payload){ this.meta=v.payload.meta; this.update(v.payload.sats); } }\n  },\n  methods: {\n    col(shell) { return shell===43?'#ff7700':shell===53?'#00aaff':shell===70?'#00ee88':'#cc44ff'; },\n    init() {\n      const loadCSS=href=>{ if(!document.querySelector(`link[href=\"${href}\"]`)){const l=document.createElement('link');l.rel='stylesheet';l.href=href;document.head.appendChild(l);} };\n      const loadJS=src=>new Promise(res=>{ if(document.querySelector(`script[src=\"${src}\"]`)){res();return;} const s=document.createElement('script');s.src=src;s.onload=res;document.head.appendChild(s); });\n      loadCSS('https://unpkg.com/leaflet@1.9.4/dist/leaflet.css');\n      loadJS('https://unpkg.com/leaflet@1.9.4/dist/leaflet.js').then(()=>{\n        const L=window.L;\n        this._map=L.map(this.$refs.mapEl,{center:[30,0],zoom:2,preferCanvas:true});\n        L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',{attribution:'&copy; OSM &copy; CARTO',subdomains:'abcd',maxZoom:19}).addTo(this._map);\n        this._layer=L.layerGroup().addTo(this._map);\n        this.ready=true;\n        if(this._pending){this.update(this._pending);this._pending=null;}\n      });\n    },\n    update(sats) {\n      if(!this.ready){this._pending=sats;return;}\n      const L=window.L;\n      const active=new Set(sats.map(s=>s.name));\n      Object.keys(this.markers).forEach(n=>{\n        if(!active.has(n)){this.markers[n].remove();delete this.markers[n];if(this.trails[n]){this.trails[n].remove();delete this.trails[n];}}\n      });\n      sats.forEach(sat=>{\n        const c=this.col(sat.shell);\n        const r=sat.selected?5:sat.illuminated&&this.meta.observerDark?4:3;\n        if(this.markers[sat.name]){\n          this.markers[sat.name].setLatLng([sat.lat,sat.lon]).setStyle({color:c,fillColor:c,radius:r});\n        } else {\n          this.markers[sat.name]=L.circleMarker([sat.lat,sat.lon],{radius:r,color:c,fillColor:c,fillOpacity:0.9,weight:sat.selected?1.5:0})\n            .bindTooltip(sat.name,{opacity:0.85})\n            .on('click',()=>{this.selected=sat;this.send({topic:'select',payload:{name:sat.name}});})\n            .addTo(this._layer);\n        }\n        // Issue #3 fix: split trail at antimeridian crossings\n        if(sat.trail&&sat.trail.length>1){\n          const allPts=[...sat.trail,{lat:sat.lat,lon:sat.lon}];\n          const segments=[[]];\n          allPts.forEach((p,i)=>{\n            if(i>0&&Math.abs(p.lon-allPts[i-1].lon)>180) segments.push([]);\n            segments[segments.length-1].push([p.lat,p.lon]);\n          });\n          const pts=segments[segments.length-1]; // use last segment for simple polyline\n          if(this.trails[sat.name]){this.trails[sat.name].setLatLngs(pts);}\n          else{this.trails[sat.name]=L.polyline(pts,{color:c,weight:0.8,opacity:0.35}).addTo(this._layer);}\n        }\n      });\n    }\n  }\n}\n</script>",
+    "templateScope": "local",
+    "className": "",
+    "x": 900,
+    "y": 100,
+    "wires": [
+      []
+    ]
+  },
+  {
+    "id": "ac_notif_tpl",
+    "type": "ui-template",
+    "z": "ac_tab",
+    "group": "ac_grp_notif",
+    "page": "",
+    "ui": "ac_ui_base",
+    "name": "AOS/LOS Alerts",
+    "order": 1,
+    "width": "3",
+    "height": "0",
+    "head": "",
+    "format": "<template>\n  <div v-if=\"notifications.length\" style=\"position:relative;font-family:monospace\">\n    <div v-for=\"n in notifications\" :key=\"n.id\"\n      :style=\"{background: n.type==='AOS'?'#0a2a0a':'#2a0a0a', border:'1px solid '+(n.type==='AOS'?'#2a6a2a':'#6a2a2a'), borderRadius:'4px', padding:'6px 10px', marginBottom:'4px', fontSize:'11px', color: n.type==='AOS'?'#4f8':'#f84'}\">\n      {{ n.msg }}\n    </div>\n  </div>\n</template>\n<script>\nexport default {\n  props: ['msg'],\n  data() { return { notifications: [] } },\n  watch: {\n    msg(v) {\n      if(!v?.payload) return;\n      const n = { id: Date.now(), type: v.payload.startsWith('\ud83d\udef0')?'AOS':'LOS', msg: v.payload };\n      this.notifications.unshift(n);\n      if(this.notifications.length > 5) this.notifications.pop();\n      setTimeout(()=>{ this.notifications = this.notifications.filter(x=>x.id!==n.id); }, 15000);\n    }\n  }\n}\n</script>",
+    "templateScope": "local",
+    "className": "",
+    "x": 900,
+    "y": 100,
+    "wires": [
+      []
+    ]
+  },
+  {
+    "id": "ac_settings_tpl",
+    "type": "ui-template",
+    "z": "ac_tab",
+    "group": "ac_grp_settings",
+    "page": "",
+    "ui": "ac_ui_base",
+    "name": "Settings",
+    "order": 1,
+    "width": "3",
+    "height": "0",
+    "head": "",
+    "format": "<template>\n  <div style=\"padding:16px;font-family:monospace;color:#aab;max-width:480px\">\n    <h3 style=\"color:#cde;margin-bottom:12px\">\u2699 Starlink Tracker Settings</h3>\n    <!-- Issue #6: Observer location -->\n    <div style=\"background:#0f1a2a;border:1px solid #1e3a5a;border-radius:6px;padding:12px;margin-bottom:12px\">\n      <div style=\"color:#7af;margin-bottom:8px;font-weight:bold\">Observer Location</div>\n      <div style=\"display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px\">\n        <label>Latitude<br><input v-model.number=\"lat\" type=\"number\" step=\"0.001\" min=\"-90\" max=\"90\" style=\"width:100%;background:#0a1a2a;border:1px solid #2a4a6a;color:#cde;padding:4px;border-radius:3px\"></label>\n        <label>Longitude<br><input v-model.number=\"lon\" type=\"number\" step=\"0.001\" min=\"-180\" max=\"180\" style=\"width:100%;background:#0a1a2a;border:1px solid #2a4a6a;color:#cde;padding:4px;border-radius:3px\"></label>\n      </div>\n      <button @click=\"geolocate\" style=\"background:#1a3a5a;color:#7af;border:1px solid #2a5a8a;padding:5px 12px;border-radius:3px;cursor:pointer;margin-right:8px\">\ud83d\udccd Use My Location</button>\n      <button @click=\"saveObserver\" style=\"background:#1a4a2a;color:#4f8;border:1px solid #2a6a4a;padding:5px 12px;border-radius:3px;cursor:pointer\">Save</button>\n      <span style=\"color:#4f8;margin-left:8px;font-size:10px\">{{ obsSaved }}</span>\n    </div>\n    <!-- Favorites / AOS alerts -->\n    <div style=\"background:#0f1a2a;border:1px solid #1e3a5a;border-radius:6px;padding:12px;margin-bottom:12px\">\n      <div style=\"color:#7af;margin-bottom:8px;font-weight:bold\">AOS/LOS Favorites</div>\n      <div style=\"font-size:10px;color:#667;margin-bottom:6px\">Enter satellite names (e.g. STARLINK-1234), one per line</div>\n      <textarea v-model=\"favText\" rows=\"4\" style=\"width:100%;background:#0a1a2a;border:1px solid #2a4a6a;color:#cde;padding:4px;border-radius:3px;font-family:monospace;font-size:11px\"/>\n      <br>\n      <label style=\"font-size:10px\">AOS alert threshold: <b style=\"color:#cde\">{{ aosThreshold }}\u00b0</b>\n        <input type=\"range\" min=\"0\" max=\"30\" v-model.number=\"aosThreshold\" style=\"width:80px;vertical-align:middle\">\n      </label>\n      <button @click=\"saveFavorites\" style=\"background:#1a4a2a;color:#4f8;border:1px solid #2a6a4a;padding:5px 12px;border-radius:3px;cursor:pointer;margin-top:6px\">Save Favorites</button>\n      <span style=\"color:#4f8;margin-left:8px;font-size:10px\">{{ favSaved }}</span>\n    </div>\n    <div style=\"font-size:9px;color:#445\">Settings are persisted across Node-RED restarts.</div>\n  </div>\n</template>\n<script>\nexport default {\n  props: ['msg'],\n  data() { return { lat:51.0447, lon:-114.0719, obsSaved:'', favText:'', aosThreshold:5, favSaved:'' } },\n  methods: {\n    geolocate() {\n      if(!navigator.geolocation) return;\n      navigator.geolocation.getCurrentPosition(p => { this.lat=+p.coords.latitude.toFixed(4); this.lon=+p.coords.longitude.toFixed(4); });\n    },\n    saveObserver() {\n      this.send({ topic:'observer', payload:{ lat:this.lat, lon:this.lon } });\n      this.obsSaved = '\u2713 saved';\n      setTimeout(()=>this.obsSaved='', 3000);\n    },\n    saveFavorites() {\n      const favs = this.favText.split('\\n').map(s=>s.trim().toUpperCase()).filter(Boolean);\n      this.send({ topic:'favorites', payload:favs });\n      this.send({ topic:'aosThreshold', payload:this.aosThreshold });\n      this.favSaved = `\u2713 saved ${favs.length} satellites`;\n      setTimeout(()=>this.favSaved='', 3000);\n    }\n  }\n}\n</script>",
+    "templateScope": "local",
+    "className": "",
+    "x": 900,
+    "y": 100,
+    "wires": [
+      [
+        "ac_settings_fn"
+      ]
+    ]
+  },
+  {
+    "id": "ac_ui_ctrl",
+    "type": "ui-control",
+    "z": "ac_tab",
+    "ui": "ac_ui_base",
+    "name": "Viewer Count",
+    "events": "connection",
+    "x": 200,
+    "y": 340,
+    "wires": [
+      [
+        "ac_viewer_fn"
+      ]
+    ]
+  },
+  {
+    "id": "ac_viewer_fn",
+    "type": "function",
+    "z": "ac_tab",
+    "name": "Track Viewers",
+    "func": "// Issue #13: track connected Dashboard clients\nlet count = global.get('viewerCount') || 0;\nif (msg.payload === 'connected')    count = Math.max(0, count + 1);\nif (msg.payload === 'disconnected') count = Math.max(0, count - 1);\nglobal.set('viewerCount', count);\nnode.status({fill: count>0?'green':'grey', shape:'dot', text:`${count} viewer(s)`});\nreturn null;",
+    "outputs": 1,
+    "timeout": 0,
+    "noerr": 0,
+    "initialize": "",
+    "finalize": "",
+    "libs": [],
+    "x": 380,
+    "y": 340,
+    "wires": [
+      []
+    ]
+  },
+  {
+    "id": "ac_viewer_gate",
+    "type": "function",
+    "z": "ac_tab",
+    "name": "Viewer Gate",
+    "func": "// Issue #13: only pass message if at least one client is viewing\nconst viewers = global.get('viewerCount') || 0;\nif (viewers > 0) return msg;\nreturn null;",
+    "outputs": 1,
+    "timeout": 0,
+    "noerr": 0,
+    "initialize": "",
+    "finalize": "",
+    "libs": [],
+    "x": 380,
+    "y": 240,
+    "wires": [
+      [
+        "ac_compute_fn"
+      ]
+    ]
+  },
+  {
+    "id": "ac_settings_fn",
+    "type": "function",
+    "z": "ac_tab",
+    "name": "Apply Settings",
+    "func": "// Store observer location from settings page\nif (msg.topic === 'observer') {\n    flow.set('observer', msg.payload, 'file');\n    node.status({fill:'green', shape:'dot', text:`${msg.payload.lat.toFixed(3)}, ${msg.payload.lon.toFixed(3)}`});\n}\nif (msg.topic === 'filter') {\n    flow.set('minElevation', msg.payload.minEl, 'file');\n    flow.set('activeShells', msg.payload.shells, 'file');\n    flow.set('maxSats', msg.payload.maxSats, 'file');\n}\nif (msg.topic === 'select') {\n    flow.set('selectedSat', msg.payload.name);\n}\nif (msg.topic === 'favorites') {\n    flow.set('favorites', msg.payload, 'file');\n}\nreturn null;",
+    "outputs": 1,
+    "timeout": 0,
+    "noerr": 0,
+    "initialize": "",
+    "finalize": "",
+    "libs": [],
+    "x": 700,
+    "y": 340,
+    "wires": [
+      []
+    ]
+  },
+  {
+    "id": "ac_pass_fn",
+    "type": "function",
+    "z": "ac_tab",
+    "name": "Predict Passes",
+    "func": "// Issue #11: predict next passes for selected satellite over next 6 hours\nconst deg2rad = Math.PI / 180;\nconst Re = 6371, h = 550;\nconst obs = flow.get('observer') || { lat: 51.0447, lon: -114.0719 };\nconst obs_lat = obs.lat * deg2rad;\nconst obs_lon = obs.lon * deg2rad;\nconst minEl = flow.get('minElevation') || 0;\n\nconst name = msg.payload;\nconst parsedSats = global.get('parsedSats') || [];\nconst sat = parsedSats.find(s => s.name === name);\nif (!sat) { node.warn('Satellite not found: ' + name); return null; }\n\nconst { n, inc, raan, argp, M0, epoch } = sat;\nconst ir = inc * deg2rad;\nconst step = 10000; // 10s in ms\nconst horizon = 6 * 3600 * 1000;\nconst passes = [];\nlet inPass = false, passStart, maxEl = 0, azAtMax;\n\nfor (let dt = 0; dt <= horizon; dt += step) {\n    const t = Date.now() + dt;\n    const GAST = (280.46061837 + 360.98564736629 * (t - 946728000000) / 86400000) % 360;\n    const M    = (M0 + n * (t - epoch) / 86400000 * 360) % 360;\n    const u    = (argp + M) * deg2rad;\n    const slat = Math.asin(Math.max(-1, Math.min(1, Math.sin(ir)*Math.sin(u))));\n    let slon    = ((raan + Math.atan2(Math.cos(ir)*Math.sin(u), Math.cos(u))/deg2rad) - GAST + 540) % 360 - 180;\n    const dlon  = slon * deg2rad - obs_lon;\n    const cos_c = Math.sin(obs_lat)*Math.sin(slat) + Math.cos(obs_lat)*Math.cos(slat)*Math.cos(dlon);\n    if (cos_c < Re/(Re+h)) {\n        if (inPass) {\n            passes.push({ los: new Date(t).toISOString(), maxEl: +maxEl.toFixed(1), azAtMax: +azAtMax.toFixed(0), aos: passStart, duration: Math.round((t - new Date(passStart).getTime())/1000) + 's' });\n            inPass = false; maxEl = 0;\n        }\n        continue;\n    }\n    const c  = Math.acos(Math.max(-1, Math.min(1, cos_c)));\n    const el = Math.atan((cos_c - Re/(Re+h)) / Math.sin(c)) / deg2rad;\n    if (el < minEl) continue;\n    const az = (Math.atan2(Math.sin(dlon)*Math.cos(slat), Math.cos(obs_lat)*Math.sin(slat)-Math.sin(obs_lat)*Math.cos(slat)*Math.cos(dlon))/deg2rad+360)%360;\n    if (!inPass) { inPass = true; passStart = new Date(t).toISOString(); }\n    if (el > maxEl) { maxEl = el; azAtMax = az; }\n}\n\nmsg.payload = { satellite: name, passes };\nreturn msg;",
+    "outputs": 1,
+    "timeout": 0,
+    "noerr": 0,
+    "initialize": "",
+    "finalize": "",
+    "libs": [],
+    "x": 700,
+    "y": 380,
+    "wires": [
+      [
+        "ac_svg_tpl"
+      ]
+    ]
   },
   {
     "id": "ac_fetch_inj",
     "type": "inject",
     "z": "ac_tab",
-    "name": "Fetch TLE Data",
+    "name": "Fetch TLE (2h)",
     "props": [
       {
         "p": "payload"
       }
     ],
-    "repeat": "3600",
+    "repeat": "7200",
     "crontab": "",
     "once": true,
-    "onceDelay": 1,
-    "topic": "",
+    "onceDelay": 2,
     "payload": "",
-    "payloadType": "date",
-    "x": 130,
-    "y": 80,
+    "payloadType": "str",
+    "x": 160,
+    "y": 60,
+    "wires": [
+      [
+        "ac_check_cache"
+      ]
+    ]
+  },
+  {
+    "id": "ac_check_cache",
+    "type": "function",
+    "z": "ac_tab",
+    "name": "Check Cache Age",
+    "func": "// Issue #5 perf: check 2h cache before fetching\nconst CACHE = '/data/starlink_tle_cache.csv';\nconst TWO_HOURS = 2 * 60 * 60 * 1000;\ntry {\n    const stat = fs.statSync(CACHE);\n    const age  = Date.now() - stat.mtimeMs;\n    if (age < TWO_HOURS) {\n        const data = fs.readFileSync(CACHE, 'utf8');\n        global.set('rawStarlinkData', data);\n        global.set('parsedSats', parseCsv(data));\n        global.set('tleFetchedAt', stat.mtimeMs);\n        global.set('satHistory', {});\n        node.status({fill:'green', shape:'dot', text:`cache ${Math.round(age/60000)}m old`});\n        return null;\n    }\n} catch(e) { /* no cache yet */ }\nreturn msg;\n\nfunction parseCsv(raw) {\n    return raw.split('\\n').slice(1).map(line => {\n        const r = line.split(',');\n        if (r.length < 9 || !r[0] || !r[0].startsWith('STARLINK')) return null;\n        const n=+r[3], inc=+r[5], raan=+r[6], argp=+r[7], M0=+r[8];\n        if ([n,inc,raan,argp,M0].some(isNaN)) return null;\n        // Issue #1 fix: append Z so epoch is parsed as UTC, not local time\n        const epoch = new Date(r[2].trim() + 'Z').getTime();\n        if (!epoch || isNaN(epoch)) return null;\n        return { name:r[0].trim(), n, inc, raan, argp, M0, epoch };\n    }).filter(Boolean);\n}",
+    "outputs": 1,
+    "timeout": 0,
+    "noerr": 0,
+    "initialize": "",
+    "finalize": "",
+    "libs": [
+      {
+        "var": "fs",
+        "module": "fs"
+      }
+    ],
+    "x": 340,
+    "y": 60,
     "wires": [
       [
         "ac_fetch_http"
@@ -36,7 +423,7 @@
     "id": "ac_fetch_http",
     "type": "http request",
     "z": "ac_tab",
-    "name": "Celestrak Starlink TLEs",
+    "name": "GET Celestrak TLE",
     "method": "GET",
     "ret": "txt",
     "paytoqs": "ignore",
@@ -46,29 +433,80 @@
     "proxy": "",
     "insecureHTTPParser": false,
     "authType": "",
-    "senderr": false,
+    "senderr": true,
     "headers": [],
-    "x": 340,
-    "y": 80,
+    "x": 540,
+    "y": 60,
     "wires": [
       [
-        "ac_store_fn"
+        "ac_handle_resp"
       ]
     ]
   },
   {
-    "id": "ac_store_fn",
+    "id": "ac_handle_resp",
     "type": "function",
     "z": "ac_tab",
-    "name": "Store TLE to Global",
-    "func": "global.set(\"rawStarlinkData\", msg.payload);\nglobal.set(\"satHistory\", {});\nreturn null;",
-    "outputs": 1,
+    "name": "HTTP OK?",
+    "func": "// Route HTTP result: success \u2192 port 1, error \u2192 port 2 (cache fallback)\nif (msg.error || (msg.statusCode && msg.statusCode !== 200)) {\n    node.warn('HTTP fetch failed (' + (msg.error || msg.statusCode) + ') \u2014 trying cache');\n    return [null, msg];\n}\nreturn [msg, null];",
+    "outputs": 2,
     "timeout": 0,
     "noerr": 0,
     "initialize": "",
     "finalize": "",
     "libs": [],
-    "x": 560,
+    "x": 720,
+    "y": 60,
+    "wires": [
+      [
+        "ac_save_store"
+      ],
+      [
+        "ac_load_cache"
+      ]
+    ]
+  },
+  {
+    "id": "ac_save_store",
+    "type": "function",
+    "z": "ac_tab",
+    "name": "Save & Store TLE",
+    "func": "// Issue #1, #5: Save TLE, parse once, store to global\nconst CACHE = '/data/starlink_tle_cache.csv';\nconst now = Date.now();\ntry { fs.writeFileSync(CACHE, msg.payload); } catch(e) { node.warn('Cache write failed: ' + e.message); }\nglobal.set('rawStarlinkData', msg.payload);\nglobal.set('parsedSats', parseCsv(msg.payload));\nglobal.set('tleFetchedAt', now);\nglobal.set('satHistory', {});\nnode.status({fill:'blue', shape:'dot', text:`fetched ${new Date(now).toLocaleTimeString()}`});\nreturn null;\n\nfunction parseCsv(raw) {\n    return raw.split('\\n').slice(1).map(line => {\n        const r = line.split(',');\n        if (r.length < 9 || !r[0] || !r[0].startsWith('STARLINK')) return null;\n        const n=+r[3], inc=+r[5], raan=+r[6], argp=+r[7], M0=+r[8];\n        if ([n,inc,raan,argp,M0].some(isNaN)) return null;\n        // Issue #1 fix: append Z so epoch is parsed as UTC, not local time\n        const epoch = new Date(r[2].trim() + 'Z').getTime();\n        if (!epoch || isNaN(epoch)) return null;\n        return { name:r[0].trim(), n, inc, raan, argp, M0, epoch };\n    }).filter(Boolean);\n}",
+    "outputs": 1,
+    "timeout": 0,
+    "noerr": 0,
+    "initialize": "",
+    "finalize": "",
+    "libs": [
+      {
+        "var": "fs",
+        "module": "fs"
+      }
+    ],
+    "x": 900,
+    "y": 40,
+    "wires": [
+      []
+    ]
+  },
+  {
+    "id": "ac_load_cache",
+    "type": "function",
+    "z": "ac_tab",
+    "name": "Load Cache Fallback",
+    "func": "// HTTP failed \u2014 load from cache file as fallback\nconst CACHE = '/data/starlink_tle_cache.csv';\ntry {\n    const data = fs.readFileSync(CACHE, 'utf8');\n    const stat = fs.statSync(CACHE);\n    global.set('rawStarlinkData', data);\n    global.set('parsedSats', parseCsv(data));\n    global.set('tleFetchedAt', stat.mtimeMs);\n    global.set('satHistory', {});\n    node.status({fill:'yellow', shape:'ring', text:`HTTP err, using cache ${new Date().toLocaleTimeString()}`});\n} catch(e) {\n    node.error('HTTP fetch failed and no cache available: ' + e.message);\n}\nreturn null;\n\nfunction parseCsv(raw) {\n    return raw.split('\\n').slice(1).map(line => {\n        const r = line.split(',');\n        if (r.length < 9 || !r[0] || !r[0].startsWith('STARLINK')) return null;\n        const n=+r[3], inc=+r[5], raan=+r[6], argp=+r[7], M0=+r[8];\n        if ([n,inc,raan,argp,M0].some(isNaN)) return null;\n        // Issue #1 fix: append Z so epoch is parsed as UTC, not local time\n        const epoch = new Date(r[2].trim() + 'Z').getTime();\n        if (!epoch || isNaN(epoch)) return null;\n        return { name:r[0].trim(), n, inc, raan, argp, M0, epoch };\n    }).filter(Boolean);\n}",
+    "outputs": 1,
+    "timeout": 0,
+    "noerr": 0,
+    "initialize": "",
+    "finalize": "",
+    "libs": [
+      {
+        "var": "fs",
+        "module": "fs"
+      }
+    ],
+    "x": 900,
     "y": 80,
     "wires": [
       []
@@ -78,7 +516,7 @@
     "id": "ac_anim_inj",
     "type": "inject",
     "z": "ac_tab",
-    "name": "Frame (2s)",
+    "name": "Animate (2s)",
     "props": [
       {
         "p": "payload"
@@ -86,16 +524,15 @@
     ],
     "repeat": "2",
     "crontab": "",
-    "once": true,
-    "onceDelay": 3,
-    "topic": "",
+    "once": false,
+    "onceDelay": 0,
     "payload": "",
-    "payloadType": "date",
-    "x": 130,
-    "y": 200,
+    "payloadType": "str",
+    "x": 160,
+    "y": 240,
     "wires": [
       [
-        "ac_compute_fn"
+        "ac_viewer_gate"
       ]
     ]
   },
@@ -104,15 +541,15 @@
     "type": "function",
     "z": "ac_tab",
     "name": "Compute Satellite Positions",
-    "func": "// CONFIGURE YOUR LOCATION\nconst OBSERVER_LAT = 51.0447;   // Calgary, AB\nconst OBSERVER_LON = -114.0719;\nconst deg2rad = Math.PI / 180;\n\nconst rawData = global.get(\"rawStarlinkData\");\nif (!rawData || typeof rawData !== 'string' || rawData.trim() === \"\") return null;\n\nconst now   = Date.now();\nconst GAST  = (280.46061837 + 360.98564736629 * (now - 946728000000) / 86400000) % 360;\nconst Re = 6371, h = 550;\nconst obs_lat = OBSERVER_LAT * deg2rad;\nconst obs_lon = OBSERVER_LON * deg2rad;\n\nlet hist = global.get(\"satHistory\") || {};\nconst sats = [];\n\nfor (const line of rawData.split('\\n')) {\n    const r = line.split(',');\n    if (r.length < 9 || !r[0] || !r[0].startsWith(\"STARLINK\")) continue;\n    const n=+r[3], inc=+r[5], raan=+r[6], argp=+r[7], M0=+r[8];\n    if ([n,inc,raan,argp,M0].some(isNaN)) continue;\n    try {\n        const M    = (M0 + n*(now - new Date(r[2].trim()).getTime())/86400000*360) % 360;\n        const u    = (argp + M) * deg2rad;\n        const ir   = inc * deg2rad;\n        const slat = Math.asin(Math.max(-1, Math.min(1, Math.sin(ir)*Math.sin(u))));\n        let   slon = ((raan + Math.atan2(Math.cos(ir)*Math.sin(u), Math.cos(u))/deg2rad) - GAST) % 360;\n        if (slon > 180) slon -= 360;\n        const dlon  = slon*deg2rad - obs_lon;\n        const cos_c = Math.sin(obs_lat)*Math.sin(slat) + Math.cos(obs_lat)*Math.cos(slat)*Math.cos(dlon);\n        if (cos_c < Re/(Re+h)) continue;\n        const c  = Math.acos(Math.max(-1, Math.min(1, cos_c)));\n        const el = Math.atan((cos_c - Re/(Re+h)) / Math.sin(c)) / deg2rad;\n        if (el <= 0) continue;\n        const az = (Math.atan2(\n            Math.sin(dlon)*Math.cos(slat),\n            Math.cos(obs_lat)*Math.sin(slat) - Math.sin(obs_lat)*Math.cos(slat)*Math.cos(dlon)\n        )/deg2rad + 360) % 360;\n        const lat = +(slat/deg2rad).toFixed(3), lon = +slon.toFixed(3);\n        const nm  = r[0].trim();\n        if (!hist[nm]) hist[nm] = [];\n        hist[nm].push({t:now, el:+el.toFixed(2), az:+az.toFixed(2), lat, lon});\n        hist[nm] = hist[nm].filter(p=>(now-p.t)<60000).slice(-20);\n        sats.push({name:nm, inc:+inc.toFixed(1), el:+el.toFixed(2), az:+az.toFixed(2), lat, lon, trail:hist[nm]});\n    } catch(e) {}\n}\nglobal.set(\"satHistory\", hist);\nsats.sort((a,b) => b.el - a.el);\nconst payload = sats.slice(0, 300);\nreturn [{payload}, {payload}, {payload}];",
-    "outputs": 3,
+    "func": "// Compute visible satellite positions \u2014 Issues #1 #2 #4 #5 #6 #8 #9 #10 #12\nconst deg2rad = Math.PI / 180;\nconst Re = 6371, h = 550;\n\n// Issue #6: read observer from flow context (set via settings page), fallback to Calgary\nconst obs = flow.get('observer') || { lat: 51.0447, lon: -114.0719 };\nconst obs_lat = obs.lat * deg2rad;\nconst obs_lon = obs.lon * deg2rad;\n\n// Issue #8: read filters from flow context\nconst minEl   = flow.get('minElevation') || 0;\nconst shells  = flow.get('activeShells') || [43, 53, 70, 97];\nconst maxSats = flow.get('maxSats') || 300;\nconst selectedSat = flow.get('selectedSat') || null;\n\n// Issue #5: use pre-parsed array, not raw CSV\nconst parsedSats = global.get('parsedSats');\nif (!parsedSats || parsedSats.length === 0) return null;\n\n// Issue #10: TLE freshness\nconst tleFetchedAt = global.get('tleFetchedAt') || 0;\n\nconst now  = Date.now();\nconst GAST = (280.46061837 + 360.98564736629 * (now - 946728000000) / 86400000) % 360;\n\n// Issue #12: sun position (simple solar declination + GAST hour angle)\nconst sunEl = computeSunElevation(now, obs.lat, obs.lon);\nconst observerDark = sunEl < -6; // astronomical twilight\n\nlet hist = global.get('satHistory') || {};\nconst sats = [];\nconst prevVis = global.get('prevVisible') || {};\n\nfor (const sat of parsedSats) {\n    const { name, n, inc, raan, argp, M0, epoch } = sat;\n\n    // Issue #8: shell filter\n    const shell = inc < 50 ? 43 : inc < 60 ? 53 : inc < 75 ? 70 : 97;\n    if (!shells.includes(shell)) continue;\n\n    const M    = (M0 + n * (now - epoch) / 86400000 * 360) % 360;\n    const u    = (argp + M) * deg2rad;\n    const ir   = inc * deg2rad;\n    const slat = Math.asin(Math.max(-1, Math.min(1, Math.sin(ir) * Math.sin(u))));\n    // Issue #2 fix: normalize longitude to [-180, 180] properly\n    let slon = ((raan + Math.atan2(Math.cos(ir)*Math.sin(u), Math.cos(u))/deg2rad) - GAST + 540) % 360 - 180;\n\n    const dlon  = slon * deg2rad - obs_lon;\n    const cos_c = Math.sin(obs_lat)*Math.sin(slat) + Math.cos(obs_lat)*Math.cos(slat)*Math.cos(dlon);\n    if (cos_c < Re/(Re+h)) continue;\n    const c  = Math.acos(Math.max(-1, Math.min(1, cos_c)));\n    const el = Math.atan((cos_c - Re/(Re+h)) / Math.sin(c)) / deg2rad;\n    if (el <= minEl) continue;  // Issue #8: min elevation filter\n\n    const az = (Math.atan2(\n        Math.sin(dlon)*Math.cos(slat),\n        Math.cos(obs_lat)*Math.sin(slat) - Math.sin(obs_lat)*Math.cos(slat)*Math.cos(dlon)\n    ) / deg2rad + 360) % 360;\n\n    const lat = +(slat / deg2rad).toFixed(3);\n    const lon = +slon.toFixed(3);\n\n    if (!hist[name]) hist[name] = [];\n    hist[name].push({t:now, el:+el.toFixed(2), az:+az.toFixed(2), lat, lon});\n    hist[name] = hist[name].filter(p => (now - p.t) < 60000).slice(-20);\n\n    // Issue #12: illumination check\n    const illuminated = isSatIlluminated(lat, lon, now);\n\n    sats.push({\n        name, inc: +inc.toFixed(1), el: +el.toFixed(2), az: +az.toFixed(2),\n        lat, lon, trail: hist[name], shell, illuminated,\n        selected: name === selectedSat\n    });\n}\n\n// Issue #4 fix: prune satHistory keys not in current visible set\nconst visibleNames = new Set(sats.map(s => s.name));\nObject.keys(hist).forEach(k => { if (!visibleNames.has(k)) delete hist[k]; });\nglobal.set('satHistory', hist);\n\n// Issue #9: AOS/LOS detection\nconst favorites = flow.get('favorites') || [];\nconst threshold = flow.get('aosThreshold') || 5;\nconst aosMsgs = [];\nsats.forEach(s => {\n    if (!favorites.includes(s.name)) return;\n    const prev = prevVis[s.name] || 0;\n    if (prev <= threshold && s.el > threshold) aosMsgs.push({event:'AOS', name:s.name, el:s.el, az:s.az});\n});\nObject.keys(prevVis).forEach(n => {\n    if (favorites.includes(n) && !visibleNames.has(n)) aosMsgs.push({event:'LOS', name:n});\n});\nconst newPrevVis = {};\nsats.forEach(s => { newPrevVis[s.name] = s.el; });\nglobal.set('prevVisible', newPrevVis);\n\nif (aosMsgs.length > 0) {\n    aosMsgs.forEach(m => {\n        node.send([null, null, null, {\n            payload: m.event === 'AOS'\n                ? `\ud83d\udef0 AOS: ${m.name} \u2014 El ${m.el}\u00b0 Az ${m.az}\u00b0`\n                : `\ud83d\udce1 LOS: ${m.name}`\n        }]);\n    });\n}\n\nsats.sort((a, b) => b.el - a.el);\nconst payload = {\n    sats: sats.slice(0, maxSats),\n    meta: {\n        count: sats.length,\n        tleFetchedAt,\n        tleAgeMs: now - tleFetchedAt,\n        observerDark,\n        sunEl: +sunEl.toFixed(1),\n        observer: obs,\n        ts: now\n    }\n};\n\nreturn [{payload}, {payload}, {payload}, null];\n\n// \u2500\u2500 helpers \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\nfunction computeSunElevation(nowMs, lat, lon) {\n    const JD = nowMs / 86400000 + 2440587.5;\n    const n_ = JD - 2451545.0;\n    const L  = (280.460 + 0.9856474 * n_) % 360;\n    const g  = (357.528 + 0.9856003 * n_) * deg2rad;\n    const lam = (L + 1.915*Math.sin(g) + 0.020*Math.sin(2*g)) * deg2rad;\n    const dec = Math.asin(Math.sin(23.439 * deg2rad) * Math.sin(lam));\n    const UT  = (nowMs % 86400000) / 3600000;\n    const HA  = ((lon + 180 + (UT - 12) * 15) % 360) * deg2rad;\n    const latR = lat * deg2rad;\n    return Math.asin(Math.sin(latR)*Math.sin(dec) + Math.cos(latR)*Math.cos(dec)*Math.cos(HA)) / deg2rad;\n}\n\nfunction isSatIlluminated(satLat, satLon, nowMs) {\n    const JD = nowMs / 86400000 + 2440587.5;\n    const n_ = JD - 2451545.0;\n    const L  = (280.460 + 0.9856474 * n_) % 360;\n    const g  = (357.528 + 0.9856003 * n_) * deg2rad;\n    const lam = (L + 1.915*Math.sin(g) + 0.020*Math.sin(2*g)) * deg2rad;\n    const dec  = Math.asin(Math.sin(23.439*deg2rad)*Math.sin(lam)) / deg2rad;\n    const UT   = (nowMs % 86400000) / 3600000;\n    const sunLon = ((180 - (UT - 12) * 15) + 360) % 360 - 180;\n    // rough check: sat sub-point in sunlit hemisphere\n    const dlon = (satLon - sunLon) * deg2rad;\n    const cos_z = Math.sin(dec*deg2rad)*Math.sin(satLat*deg2rad) +\n                  Math.cos(dec*deg2rad)*Math.cos(satLat*deg2rad)*Math.cos(dlon);\n    return cos_z > 0;\n}",
+    "outputs": 4,
     "timeout": 0,
     "noerr": 0,
     "initialize": "",
     "finalize": "",
     "libs": [],
-    "x": 360,
-    "y": 200,
+    "x": 580,
+    "y": 240,
     "wires": [
       [
         "ac_svg_tpl"
@@ -122,261 +559,10 @@
       ],
       [
         "ac_map_tpl"
+      ],
+      [
+        "ac_notif_tpl"
       ]
     ]
-  },
-  {
-    "id": "ac_svg_tpl",
-    "type": "ui-template",
-    "z": "ac_tab",
-    "group": "ac_grp_svg",
-    "name": "SVG Polar Radar",
-    "order": 1,
-    "width": "6",
-    "height": "9",
-    "format": "<template>\n  <div style=\"background:#0a0a1a;display:flex;flex-direction:column;align-items:center;padding:4px\">\n    <div style=\"color:#445566;font-size:10px;margin-bottom:2px;font-family:monospace\">\n      {{ sats.length }} visible &nbsp;\u00b7&nbsp; SVG &nbsp;\u00b7&nbsp; {{ ts }}\n    </div>\n    <svg viewBox=\"0 0 360 360\" style=\"width:100%;max-width:380px;height:auto\">\n      <rect width=\"360\" height=\"360\" fill=\"#0a0a1a\"/>\n      <!-- Elevation rings -->\n      <circle cx=\"180\" cy=\"180\" r=\"170\" fill=\"none\" stroke=\"#1e2e3e\" stroke-width=\"1\"/>\n      <circle cx=\"180\" cy=\"180\" r=\"113\" fill=\"none\" stroke=\"#1e2e3e\" stroke-width=\"1\" stroke-dasharray=\"4,5\"/>\n      <circle cx=\"180\" cy=\"180\" r=\"57\"  fill=\"none\" stroke=\"#1e2e3e\" stroke-width=\"1\" stroke-dasharray=\"4,5\"/>\n      <!-- Crosshairs -->\n      <line x1=\"180\" y1=\"10\"  x2=\"180\" y2=\"350\" stroke=\"#192838\" stroke-width=\"0.5\"/>\n      <line x1=\"10\"  y1=\"180\" x2=\"350\" y2=\"180\" stroke=\"#192838\" stroke-width=\"0.5\"/>\n      <!-- Cardinal labels -->\n      <text x=\"180\" y=\"9\"   fill=\"#3a5a7a\" font-size=\"11\" text-anchor=\"middle\" font-family=\"monospace\">N</text>\n      <text x=\"180\" y=\"358\" fill=\"#3a5a7a\" font-size=\"11\" text-anchor=\"middle\" font-family=\"monospace\">S</text>\n      <text x=\"356\" y=\"184\" fill=\"#3a5a7a\" font-size=\"11\" text-anchor=\"end\"    font-family=\"monospace\">E</text>\n      <text x=\"4\"   y=\"184\" fill=\"#3a5a7a\" font-size=\"11\"                      font-family=\"monospace\">W</text>\n      <!-- Elevation labels -->\n      <text x=\"184\" y=\"73\"  fill=\"#2a3a4a\" font-size=\"8\" font-family=\"monospace\">60\u00b0</text>\n      <text x=\"184\" y=\"129\" fill=\"#2a3a4a\" font-size=\"8\" font-family=\"monospace\">30\u00b0</text>\n      <!-- Trails -->\n      <g v-for=\"sat in sats\" :key=\"'t_'+sat.name\">\n        <polyline v-if=\"sat.trail && sat.trail.length > 1\"\n          :points=\"tp(sat.trail)\"\n          fill=\"none\" :stroke=\"col(sat.inc)\" stroke-width=\"0.7\" opacity=\"0.3\"/>\n      </g>\n      <!-- Satellite dots -->\n      <circle v-for=\"sat in sats\" :key=\"sat.name\"\n        :cx=\"px(sat.el,sat.az)\" :cy=\"py(sat.el,sat.az)\" r=\"2.2\"\n        :fill=\"col(sat.inc)\"/>\n    </svg>\n    <!-- Legend -->\n    <div style=\"display:flex;gap:10px;margin-top:4px;font-size:9px;font-family:monospace\">\n      <span style=\"color:#ff7700\">&#9679; 43\u00b0</span>\n      <span style=\"color:#00aaff\">&#9679; 53\u00b0</span>\n      <span style=\"color:#00ee88\">&#9679; 70\u00b0</span>\n      <span style=\"color:#cc44ff\">&#9679; 97\u00b0</span>\n    </div>\n  </div>\n</template>\n<script>\nexport default {\n  props: ['msg'],\n  data() { return { sats: [], ts: '' } },\n  watch: {\n    msg(v) {\n      if (v?.payload) { this.sats = v.payload; this.ts = new Date().toLocaleTimeString(); }\n    }\n  },\n  methods: {\n    px(el, az) { return (180 + 170*(90-el)/90 * Math.sin(az*Math.PI/180)).toFixed(1); },\n    py(el, az) { return (180 - 170*(90-el)/90 * Math.cos(az*Math.PI/180)).toFixed(1); },\n    tp(trail) {\n      return trail.map(p =>\n        `${(180+170*(90-p.el)/90*Math.sin(p.az*Math.PI/180)).toFixed(1)},` +\n        `${(180-170*(90-p.el)/90*Math.cos(p.az*Math.PI/180)).toFixed(1)}`\n      ).join(' ');\n    },\n    col(inc) { return inc<50?'#ff7700':inc<60?'#00aaff':inc<75?'#00ee88':'#cc44ff'; }\n  }\n}\n</script>",
-    "storeOutMessages": false,
-    "fwdInMessages": false,
-    "resendOnRefresh": true,
-    "templateScope": "local",
-    "className": "",
-    "x": 580,
-    "y": 160,
-    "wires": [
-      []
-    ]
-  },
-  {
-    "id": "ac_canvas_tpl",
-    "type": "ui-template",
-    "z": "ac_tab",
-    "group": "ac_grp_canvas",
-    "name": "Canvas Polar Radar",
-    "order": 1,
-    "width": "6",
-    "height": "9",
-    "format": "<template>\n  <div style=\"background:#0a0a1a;display:flex;flex-direction:column;align-items:center;padding:4px\">\n    <div style=\"color:#445566;font-size:10px;margin-bottom:2px;font-family:monospace\">\n      {{ count }} visible &nbsp;\u00b7&nbsp; Canvas\n    </div>\n    <canvas ref=\"cv\" width=\"360\" height=\"360\" style=\"max-width:100%\"/>\n    <!-- Legend -->\n    <div style=\"display:flex;gap:10px;margin-top:4px;font-size:9px;font-family:monospace\">\n      <span style=\"color:#ff7700\">&#9679; 43\u00b0</span>\n      <span style=\"color:#00aaff\">&#9679; 53\u00b0</span>\n      <span style=\"color:#00ee88\">&#9679; 70\u00b0</span>\n      <span style=\"color:#cc44ff\">&#9679; 97\u00b0</span>\n    </div>\n  </div>\n</template>\n<script>\nexport default {\n  props: ['msg'],\n  data() { return { count: 0 } },\n  watch: {\n    msg(v) {\n      if (v?.payload) { this.count = v.payload.length; this.$nextTick(() => this.draw(v.payload)); }\n    }\n  },\n  methods: {\n    col(inc) { return inc<50?'#ff7700':inc<60?'#00aaff':inc<75?'#00ee88':'#cc44ff'; },\n    hex2rgba(hex, a) {\n      const n = parseInt(hex.slice(1), 16);\n      return `rgba(${n>>16},${(n>>8)&255},${n&255},${a})`;\n    },\n    draw(sats) {\n      const cv = this.$refs.cv; if (!cv) return;\n      const ctx = cv.getContext('2d');\n      const cx=180, cy=180, R=170;\n      ctx.fillStyle='#0a0a1a'; ctx.fillRect(0,0,360,360);\n      // Elevation rings\n      [[R,[]],[R*2/3,[4,5]],[R/3,[4,5]]].forEach(([r,dash]) => {\n        ctx.beginPath(); ctx.arc(cx,cy,r,0,Math.PI*2);\n        ctx.setLineDash(dash); ctx.strokeStyle='#1e2e3e'; ctx.lineWidth=1; ctx.stroke();\n      });\n      ctx.setLineDash([]);\n      // Crosshairs\n      ctx.strokeStyle='#192838'; ctx.lineWidth=0.5;\n      [[cx,10,cx,350],[10,cy,350,cy]].forEach(([x1,y1,x2,y2]) => {\n        ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2); ctx.stroke();\n      });\n      // Cardinal labels\n      ctx.font='11px monospace'; ctx.fillStyle='#3a5a7a';\n      ctx.textAlign='center'; ctx.fillText('N',cx,9);  ctx.fillText('S',cx,358);\n      ctx.textAlign='right';  ctx.fillText('E',356,184);\n      ctx.textAlign='left';   ctx.fillText('W',4,184);\n      ctx.font='8px monospace'; ctx.fillStyle='#2a3a4a';\n      ctx.fillText('60\u00b0',184,73); ctx.fillText('30\u00b0',184,129);\n      // Trails\n      sats.forEach(s => {\n        if (!s.trail || s.trail.length < 2) return;\n        ctx.beginPath();\n        s.trail.forEach((p,i) => {\n          const r=R*(90-p.el)/90;\n          const x=cx+r*Math.sin(p.az*Math.PI/180), y=cy-r*Math.cos(p.az*Math.PI/180);\n          i===0 ? ctx.moveTo(x,y) : ctx.lineTo(x,y);\n        });\n        ctx.strokeStyle = this.hex2rgba(this.col(s.inc), 0.3);\n        ctx.lineWidth=0.7; ctx.stroke();\n      });\n      // Dots\n      sats.forEach(s => {\n        const r=R*(90-s.el)/90;\n        ctx.beginPath();\n        ctx.arc(cx+r*Math.sin(s.az*Math.PI/180), cy-r*Math.cos(s.az*Math.PI/180), 2.2, 0, Math.PI*2);\n        ctx.fillStyle=this.col(s.inc); ctx.fill();\n      });\n    }\n  }\n}\n</script>",
-    "storeOutMessages": false,
-    "fwdInMessages": false,
-    "resendOnRefresh": true,
-    "templateScope": "local",
-    "className": "",
-    "x": 580,
-    "y": 200,
-    "wires": [
-      []
-    ]
-  },
-  {
-    "id": "ac_map_tpl",
-    "type": "ui-template",
-    "z": "ac_tab",
-    "group": "ac_grp_map",
-    "name": "Leaflet Ground Track",
-    "order": 1,
-    "width": "12",
-    "height": "12",
-    "format": "<template>\n  <div style=\"width:100%;height:500px;background:#111\">\n    <div ref=\"mapEl\" style=\"width:100%;height:100%\"/>\n  </div>\n</template>\n<script>\nexport default {\n  props: ['msg'],\n  data() { return { ready:false, markers:{}, trails:{} } },\n  mounted() { this.$nextTick(() => this.init()); },\n  beforeUnmount() { if (this._map) { this._map.remove(); this._map = null; } },\n  watch: {\n    msg(v) { if (v?.payload) this.update(v.payload); }\n  },\n  methods: {\n    col(inc) { return inc<50?'#ff7700':inc<60?'#00aaff':inc<75?'#00ee88':'#cc44ff'; },\n    init() {\n      const loadCSS = href => {\n        if (!document.querySelector(`link[href=\"${href}\"]`)) {\n          const l=document.createElement('link'); l.rel='stylesheet'; l.href=href;\n          document.head.appendChild(l);\n        }\n      };\n      const loadJS = src => new Promise(res => {\n        if (document.querySelector(`script[src=\"${src}\"]`)) { res(); return; }\n        const s=document.createElement('script'); s.src=src; s.onload=res;\n        document.head.appendChild(s);\n      });\n      loadCSS('https://unpkg.com/leaflet@1.9.4/dist/leaflet.css');\n      loadJS('https://unpkg.com/leaflet@1.9.4/dist/leaflet.js').then(() => {\n        const L = window.L;\n        this._map = L.map(this.$refs.mapEl, { center:[30,0], zoom:2, preferCanvas:true });\n        L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {\n          attribution:'&copy; OSM contributors &copy; CARTO', subdomains:'abcd', maxZoom:19\n        }).addTo(this._map);\n        this._layer = L.layerGroup().addTo(this._map);\n        this.ready = true;\n        if (this._pending) { this.update(this._pending); this._pending = null; }\n      });\n    },\n    update(sats) {\n      if (!this.ready) { this._pending = sats; return; }\n      const L = window.L;\n      const active = new Set(sats.map(s => s.name));\n      // Remove satellites that dropped below horizon\n      Object.keys(this.markers).forEach(n => {\n        if (!active.has(n)) {\n          this.markers[n].remove(); delete this.markers[n];\n          if (this.trails[n]) { this.trails[n].remove(); delete this.trails[n]; }\n        }\n      });\n      sats.forEach(sat => {\n        const c = this.col(sat.inc);\n        if (this.markers[sat.name]) {\n          this.markers[sat.name].setLatLng([sat.lat, sat.lon])\n            .setStyle({color:c, fillColor:c});\n        } else {\n          this.markers[sat.name] = L.circleMarker([sat.lat, sat.lon], {\n            radius:3, color:c, fillColor:c, fillOpacity:0.9, weight:0\n          }).bindTooltip(sat.name, {opacity:0.85}).addTo(this._layer);\n        }\n        if (sat.trail && sat.trail.length > 1) {\n          const pts = [...sat.trail, {lat:sat.lat, lon:sat.lon}].map(p => [p.lat, p.lon]);\n          if (this.trails[sat.name]) {\n            this.trails[sat.name].setLatLngs(pts);\n          } else {\n            this.trails[sat.name] = L.polyline(pts, {\n              color:c, weight:0.8, opacity:0.35\n            }).addTo(this._layer);\n          }\n        }\n      });\n    }\n  }\n}\n</script>",
-    "storeOutMessages": false,
-    "fwdInMessages": false,
-    "resendOnRefresh": true,
-    "templateScope": "local",
-    "className": "",
-    "x": 580,
-    "y": 240,
-    "wires": [
-      []
-    ]
-  },
-  {
-    "id": "ac_grp_svg",
-    "type": "ui-group",
-    "name": "SVG Polar Radar",
-    "page": "ac_page_svg",
-    "width": 6,
-    "height": 1,
-    "order": 1,
-    "showTitle": false,
-    "className": "",
-    "visible": true,
-    "disabled": false,
-    "groupType": "default"
-  },
-  {
-    "id": "ac_grp_canvas",
-    "type": "ui-group",
-    "name": "Canvas Polar Radar",
-    "page": "ac_page_canvas",
-    "width": 6,
-    "height": 1,
-    "order": 1,
-    "showTitle": false,
-    "className": "",
-    "visible": true,
-    "disabled": false,
-    "groupType": "default"
-  },
-  {
-    "id": "ac_grp_map",
-    "type": "ui-group",
-    "name": "Ground Track Map",
-    "page": "ac_page_map",
-    "width": 12,
-    "height": 1,
-    "order": 1,
-    "showTitle": false,
-    "className": "",
-    "visible": true,
-    "disabled": false,
-    "groupType": "default"
-  },
-  {
-    "id": "ac_page_svg",
-    "type": "ui-page",
-    "name": "SVG Radar",
-    "ui": "ac_ui_base",
-    "path": "/svg-radar",
-    "icon": "mdi-radar",
-    "layout": "grid",
-    "theme": "ac_ui_theme",
-    "breakpoints": [
-      {
-        "name": "Default",
-        "px": 0,
-        "cols": 3
-      },
-      {
-        "name": "Tablet",
-        "px": 576,
-        "cols": 6
-      },
-      {
-        "name": "Small Desktop",
-        "px": 768,
-        "cols": 9
-      },
-      {
-        "name": "Desktop",
-        "px": 1024,
-        "cols": 12
-      }
-    ],
-    "order": 1,
-    "className": "",
-    "visible": "true",
-    "disabled": "false"
-  },
-  {
-    "id": "ac_page_canvas",
-    "type": "ui-page",
-    "name": "Canvas Radar",
-    "ui": "ac_ui_base",
-    "path": "/canvas-radar",
-    "icon": "mdi-satellite-variant",
-    "layout": "grid",
-    "theme": "ac_ui_theme",
-    "breakpoints": [
-      {
-        "name": "Default",
-        "px": 0,
-        "cols": 3
-      },
-      {
-        "name": "Tablet",
-        "px": 576,
-        "cols": 6
-      },
-      {
-        "name": "Small Desktop",
-        "px": 768,
-        "cols": 9
-      },
-      {
-        "name": "Desktop",
-        "px": 1024,
-        "cols": 12
-      }
-    ],
-    "order": 2,
-    "className": "",
-    "visible": "true",
-    "disabled": "false"
-  },
-  {
-    "id": "ac_page_map",
-    "type": "ui-page",
-    "name": "Ground Track",
-    "ui": "ac_ui_base",
-    "path": "/ground-track",
-    "icon": "mdi-earth",
-    "layout": "grid",
-    "theme": "ac_ui_theme",
-    "breakpoints": [
-      {
-        "name": "Default",
-        "px": 0,
-        "cols": 3
-      },
-      {
-        "name": "Tablet",
-        "px": 576,
-        "cols": 6
-      },
-      {
-        "name": "Small Desktop",
-        "px": 768,
-        "cols": 9
-      },
-      {
-        "name": "Desktop",
-        "px": 1024,
-        "cols": 12
-      }
-    ],
-    "order": 3,
-    "className": "",
-    "visible": "true",
-    "disabled": "false"
-  },
-  {
-    "id": "ac_ui_base",
-    "type": "ui-base",
-    "name": "Starlink Tracker",
-    "path": "/starlink",
-    "appIcon": "",
-    "includeClientData": true,
-    "acceptsClientConfig": [
-      "ui-notification",
-      "ui-control",
-      "ui-chart",
-      "ui-template"
-    ],
-    "showPathInSidebar": false,
-    "headerContent": "page",
-    "navigationStyle": "default",
-    "titleBarStyle": "default",
-    "showReconnectNotification": true,
-    "notificationDisplayTime": 1,
-    "showDisconnectNotification": true,
-    "allowInstall": false
-  },
-  {
-    "id": "ac_ui_theme",
-    "type": "ui-theme",
-    "name": "Dark Theme",
-    "colors": {
-      "surface": "#1a1a2e",
-      "primary": "#00aaff",
-      "bgPage": "#0a0a1a",
-      "groupBg": "#0a0a1a",
-      "groupOutline": "#1a2840"
-    },
-    "sizes": {
-      "density": "default",
-      "pagePadding": "4px",
-      "groupGap": "4px",
-      "groupBorderRadius": "4px",
-      "widgetGap": "4px"
-    }
   }
 ]
